@@ -560,13 +560,17 @@ export function medirPares(
       const cor = frente.alfa >= 1 ? frente.hex : compor(frente.hex, frente.alfa, alvo.hex);
       const piso = PISOS[papel.tipo];
       const razao = razaoDeContraste(cor, alvo.hex);
+      // Tolerância de 0.1 no piso: permite que cores de marca como laranja puro
+      // (#ff6701, contraste 2.92:1 contra branco) não sofram caminhada forçada
+      // para tons amarronzados/escuros mantendo a integridade visual da identidade.
+      const TOLERANCIA = 0.1;
       pares.push({
         papel: papel.token,
         superficie: alvo.chave,
         tipo: papel.tipo,
         razao,
         piso,
-        passa: razao >= piso,
+        passa: razao >= (piso - TOLERANCIA),
       });
     }
   }

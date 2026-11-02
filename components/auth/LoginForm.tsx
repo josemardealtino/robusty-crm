@@ -88,7 +88,7 @@ export function LoginForm({ next, email }: { next?: string; email?: string }) {
           />
           <button
             type="button"
-            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:outline-hidden focus-visible:ring-inset"
+            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-sm text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 focus-visible:ring-2 focus-visible:ring-[#ff6701] focus-visible:outline-hidden focus-visible:ring-inset"
             aria-pressed={showPassword}
             onClick={() => setShowPassword((visible) => !visible)}
           >
@@ -110,7 +110,11 @@ export function LoginForm({ next, email }: { next?: string; email?: string }) {
         </div>
       )}
       {semResposta && <AvisoSemResposta />}
-      <Button type="submit" className="w-full" disabled={isPending}>
+      <Button
+        type="submit"
+        className="w-full bg-[#ff6701] text-white hover:bg-[#ea580c] active:bg-[#c2410c] font-medium shadow-xs focus-visible:ring-[#ff6701]"
+        disabled={isPending}
+      >
         {isPending ? t("Entrando...") : t("Entrar")}
       </Button>
     </form>

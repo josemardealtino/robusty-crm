@@ -72,7 +72,7 @@ export default async function LoginPage({
         <p>
           <Link
             href="/login/forgot"
-            className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
+            className="text-neutral-700 underline underline-offset-4 hover:text-black dark:text-neutral-300 dark:hover:text-white font-medium transition-colors"
           >
             {t("Esqueci minha senha")}
           </Link>
