@@ -25,17 +25,17 @@ import type { Regua } from "./contraste";
 
 export const REGUA_DO_PRODUTO: Regua = {
   rampaDoProduto: [
-    "#f3f6f1",
-    "#e4ebe0",
-    "#c8d6c1",
-    "#a4ba9a",
-    "#82a077",
-    "#67885d",
-    "#506d48",
-    "#41573b",
-    "#374731",
-    "#2f3c2b",
-    "#171f15",
+    "#fff7ed",
+    "#ffedd5",
+    "#fed7aa",
+    "#fdba74",
+    "#fb923c",
+    "#ff6701",
+    "#ea580c",
+    "#c2410c",
+    "#9a3412",
+    "#7c2d12",
+    "#431407",
   ],
   claro: {
     nome: "claro",
@@ -69,7 +69,7 @@ export const REGUA_DO_PRODUTO: Regua = {
         tipo: "componente",
         fonte: {
           tipo: "grau",
-          indice: 6,
+          indice: 5,
           alfa: 1,
         },
         contra: null,
@@ -81,14 +81,14 @@ export const REGUA_DO_PRODUTO: Regua = {
           tipo: "frenteCalculada",
           sobre: {
             tipo: "grau",
-            indice: 6,
+            indice: 5,
             alfa: 1,
           },
         },
         contra: [
           {
             tipo: "grau",
-            indice: 6,
+            indice: 5,
             alfa: 1,
           },
         ],
@@ -98,7 +98,7 @@ export const REGUA_DO_PRODUTO: Regua = {
         tipo: "componente",
         fonte: {
           tipo: "grau",
-          indice: 7,
+          indice: 6,
           alfa: 1,
         },
         contra: null,
@@ -172,8 +172,8 @@ export const REGUA_DO_PRODUTO: Regua = {
       "#0e0d0a",
     ],
     indices: {
-      accent: 6,
-      hover: 7,
+      accent: 5,
+      hover: 6,
       soft: 1,
     },
     alfaDoSoft: 1,
@@ -199,7 +199,7 @@ export const REGUA_DO_PRODUTO: Regua = {
         chave: "--color-accent-soft",
         fonte: {
           tipo: "literal",
-          hex: "#82a077",
+          hex: "#ff6701",
           alfa: 0.16,
         },
       },
