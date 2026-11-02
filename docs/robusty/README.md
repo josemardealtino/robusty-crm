@@ -90,3 +90,6 @@ Este diretório contém a documentação técnica, decisões de arquitetura e re
 ## 7. Histórico de Mudanças Estruturais
 - **2026-11-02**: Clonagem inicial da base DeskcommCRM (Next.js 16 + Supabase).
 - **2026-11-02**: Mapeamento do fluxo comercial Robusty (Norlando / Igor / Loja) e criação da documentação técnica inicial.
+- **2026-11-02**: Conexão com o Supabase Cloud e aplicação das 220 tabelas relacionais (`baseline.sql`) com suporte a vetores `pgvector`.
+- **2026-11-02**: Criação do primeiro usuário Super Admin da Robusty (`ti@grupomixfer.com.br`) e organização cadastrada.
+- **2026-11-02**: Configuração do Funil de Vendas oficial da Robusty no banco de dados com as 8 etapas operacionais (Entrada de Leads, Qualificação, Orçamento, Cotação Especial, Pagamento, Expedição, Agendado na Loja, Concluído/Ganho e Perdido).

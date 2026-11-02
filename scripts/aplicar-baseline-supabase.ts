@@ -6,8 +6,8 @@ async function main() {
   const connectionString = process.env.SUPABASE_DB_URL || process.argv[2];
 
   if (!connectionString) {
-    console.error("Uso: npx tsx scripts/aplicar-baseline-supabase.ts <SUPABASE_DB_URL>");
-    console.error("Ou defina SUPABASE_DB_URL no ambiente / .env.local");
+    console.error("Uso: node --env-file=.env.local -r tsx scripts/aplicar-baseline-supabase.ts");
+    console.error("Ou defina SUPABASE_DB_URL no .env.local");
     process.exit(1);
   }
 
@@ -24,14 +24,26 @@ async function main() {
   try {
     await client.connect();
     console.log("Conexão estabelecida com sucesso!");
-    console.log("Aplicando schema baseline no Supabase (pode levar 30-60 segundos)...");
-    
-    // Executa o script SQL
+
+    console.log("Garantindo extensões necessárias (vector, citext, pg_trgm, pgcrypto)...");
+    await client.query(`
+      CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
+      CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
+      CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+      CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+    `);
+    console.log("Extensões verificadas.");
+
+    console.log("Aplicando schema baseline no Supabase (pode levar de 30 a 90 segundos)...");
+    const inicio = Date.now();
     await client.query(sql);
+    const duracao = ((Date.now() - inicio) / 1000).toFixed(1);
     
-    console.log("✅ Schema baseline aplicado com sucesso no Supabase!");
-  } catch (error) {
-    console.error("❌ Erro ao aplicar baseline:", error);
+    console.log(`✅ Schema baseline aplicado com sucesso no Supabase em ${duracao}s!`);
+  } catch (error: any) {
+    console.error("❌ Erro ao aplicar baseline:", error.message);
+    if (error.detail) console.error("Detalhe:", error.detail);
+    if (error.where) console.error("Onde:", error.where);
     process.exit(1);
   } finally {
     await client.end();
