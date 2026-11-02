@@ -93,3 +93,4 @@ Este diretório contém a documentação técnica, decisões de arquitetura e re
 - **2026-11-02**: Conexão com o Supabase Cloud e aplicação das 220 tabelas relacionais (`baseline.sql`) com suporte a vetores `pgvector`.
 - **2026-11-02**: Criação do primeiro usuário Super Admin da Robusty (`ti@grupomixfer.com.br`) e organização cadastrada.
 - **2026-11-02**: Configuração do Funil de Vendas oficial da Robusty no banco de dados com as 8 etapas operacionais (Entrada de Leads, Qualificação, Orçamento, Cotação Especial, Pagamento, Expedição, Agendado na Loja, Concluído/Ganho e Perdido).
+- **2026-11-02**: Customização da identidade visual da tela de login: redirecionamento direto da raiz, remoção de opções desnecessárias (Google / Criar conta), logo e favicon oficiais da Robusty, botão "Entrar" com laranja vibrante `#ff6701` e link "Esqueci minha senha" em tom neutro tendencioso ao preto.
