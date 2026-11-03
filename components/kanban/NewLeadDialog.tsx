@@ -45,6 +45,9 @@ import { AbrirConversaAposSalvar } from "@/components/channels/AbrirConversaApos
 import type { AlvoDeConversa } from "@/components/channels/SeletorDeCanalParaConversa";
 import { EcoDoValor } from "./EcoDoValor";
 import { SeletorDeContato } from "./SeletorDeContato";
+import { Gear, Check } from "@/lib/ui/icons";
+import { CAMPOS_PADRAO_DISPONIVEIS } from "@/app/app/settings/tenant/pipelines/_new-lead-form";
+import { updatePipelineConfig } from "@/app/actions/settings/updatePipelineConfig";
 
 interface FormShape {
   title: string;
@@ -208,17 +211,30 @@ export function NewLeadDialog({
     [settings, stageId],
   );
 
-  const newLeadForm = settings?.new_lead_form as { fields?: NewLeadFormFieldConfig[] } | undefined;
+  const [customizandoCampos, setCustomizandoCampos] = useState(false);
+  const [salvandoConfig, setSalvandoConfig] = useState(false);
+  const [localFormConfig, setLocalFormConfig] = useState<NewLeadFormFieldConfig[] | null>(() => {
+    return (settings?.new_lead_form as { fields?: NewLeadFormFieldConfig[] } | undefined)?.fields ?? null;
+  });
+  const [rascunhoVisibilidade, setRascunhoVisibilidade] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (settings?.new_lead_form) {
+      setLocalFormConfig((settings.new_lead_form as { fields?: NewLeadFormFieldConfig[] }).fields ?? null);
+    }
+  }, [settings]);
+
+  const activeFormConfig = localFormConfig ?? (settings?.new_lead_form as { fields?: NewLeadFormFieldConfig[] } | undefined)?.fields;
 
   const isFieldVisible = useMemo(() => {
     return (key: string, legacyDefault = true) => {
-      if (!newLeadForm?.fields || !Array.isArray(newLeadForm.fields)) {
+      if (!activeFormConfig || !Array.isArray(activeFormConfig)) {
         return legacyDefault;
       }
-      const entry = newLeadForm.fields.find((f) => f.key === key);
+      const entry = activeFormConfig.find((f) => f.key === key);
       return entry !== undefined ? entry.visible : legacyDefault;
     };
-  }, [newLeadForm]);
+  }, [activeFormConfig]);
 
   const todosCamposPersonalizados = useMemo(() => {
     const fields = (settings?.fields as CustomFieldDef[] | undefined) ?? [];
@@ -226,35 +242,92 @@ export function NewLeadDialog({
   }, [settings]);
 
   const camposPersonalizadosVisiveis = useMemo(() => {
-    const rawFormConfig = newLeadForm?.fields;
-
     return todosCamposPersonalizados.filter((campo) => {
       // 1. Se a etapa atual exige este campo, ele sempre deve aparecer
       const exigido = camposExigidos.some((e) => e.key === campo.key);
       if (exigido) return true;
 
       // 2. Se new_lead_form foi configurado, respeita a flag de visibilidade
-      if (rawFormConfig && Array.isArray(rawFormConfig)) {
-        const config = rawFormConfig.find((f) => f.key === campo.key);
+      if (activeFormConfig && Array.isArray(activeFormConfig)) {
+        const config = activeFormConfig.find((f) => f.key === campo.key);
         if (config !== undefined) {
           return config.visible;
         }
-        return true;
+        return false;
       }
 
-      // 3. Padrão legado se não configurado: apenas campos exigidos pela etapa
+      // 3. Padrão se não configurado: falso (apenas campos exigidos pela etapa)
       return false;
     });
-  }, [todosCamposPersonalizados, camposExigidos, newLeadForm]);
+  }, [todosCamposPersonalizados, camposExigidos, activeFormConfig]);
 
   const isContactVisible = isFieldVisible("contact", true);
   const isTitleVisible = isFieldVisible("title", true);
   const isDescriptionVisible = isFieldVisible("description", true);
   const isStageVisible = isFieldVisible("stage_id", true);
-  const isValueVisible = isFieldVisible("value", true);
-  const isExpectedCloseDateVisible = isFieldVisible("expected_close_date", true);
-  const isRecorrenciaVisible = isFieldVisible("recorrencia", true);
-  const isTagsVisible = isFieldVisible("tags", true);
+  const isValueVisible = isFieldVisible("value", false);
+  const isExpectedCloseDateVisible = isFieldVisible("expected_close_date", false);
+  const isRecorrenciaVisible = isFieldVisible("recorrencia", false);
+  const isTagsVisible = isFieldVisible("tags", false);
+
+  function iniciarCustomizacao() {
+    const mapa: Record<string, boolean> = {};
+    CAMPOS_PADRAO_DISPONIVEIS.forEach((padrao) => {
+      const salvo = activeFormConfig?.find((f) => f.key === padrao.key);
+      mapa[padrao.key] = salvo ? salvo.visible : padrao.defaultVisible;
+    });
+    todosCamposPersonalizados.forEach((cp) => {
+      const salvo = activeFormConfig?.find((f) => f.key === cp.key);
+      mapa[cp.key] = salvo ? salvo.visible : false;
+    });
+    setRascunhoVisibilidade(mapa);
+    setCustomizandoCampos(true);
+  }
+
+  function alternarRascunho(chave: string) {
+    setRascunhoVisibilidade((prev) => ({
+      ...prev,
+      [chave]: !prev[chave],
+    }));
+  }
+
+  async function salvarCustomizacao() {
+    setSalvandoConfig(true);
+    try {
+      const fieldsConfig: NewLeadFormFieldConfig[] = [];
+      CAMPOS_PADRAO_DISPONIVEIS.forEach((p) => {
+        fieldsConfig.push({
+          key: p.key,
+          label: p.label,
+          visible: Boolean(rascunhoVisibilidade[p.key]),
+          is_standard: true,
+        });
+      });
+      todosCamposPersonalizados.forEach((cp) => {
+        fieldsConfig.push({
+          key: cp.key,
+          label: cp.label,
+          visible: Boolean(rascunhoVisibilidade[cp.key]),
+          is_standard: false,
+        });
+      });
+
+      const res = await updatePipelineConfig(pipelineId, {
+        new_lead_form: { fields: fieldsConfig },
+      });
+
+      if (!res.ok) {
+        toast.error(t("Erro ao salvar configuração dos campos"));
+        return;
+      }
+
+      setLocalFormConfig(fieldsConfig);
+      setCustomizandoCampos(false);
+      toast.success(t("Campos do formulário salvos com sucesso!"));
+    } finally {
+      setSalvandoConfig(false);
+    }
+  }
 
   /**
    * O QUE AINDA FALTA para esta criação — para o formulário não chamar a API
@@ -523,13 +596,104 @@ export function NewLeadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className={customizandoCampos ? "sm:max-w-xl max-h-[85vh] overflow-y-auto" : undefined}>
         <DialogHeader>
-          <DialogTitle>{t("Novo negócio")}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>{customizandoCampos ? t("Personalizar campos deste formulário") : t("Novo negócio")}</DialogTitle>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1.5 cursor-pointer"
+              onClick={customizandoCampos ? () => setCustomizandoCampos(false) : iniciarCustomizacao}
+            >
+              <Gear size={13} />
+              <span>{customizandoCampos ? t("Voltar ao formulário") : t("Personalizar campos")}</span>
+            </Button>
+          </div>
           <DialogDescription>
-            {t("Abra um negócio para um contato neste funil.")}
+            {customizandoCampos
+              ? t("Selecione quais campos devem aparecer ao cadastrar um novo negócio neste funil.")
+              : t("Abra um negócio para um contato neste funil.")}
           </DialogDescription>
         </DialogHeader>
+
+        {customizandoCampos ? (
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("Campos Padrão do Sistema")}
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {CAMPOS_PADRAO_DISPONIVEIS.map((campo) => {
+                  const ativo = Boolean(rascunhoVisibilidade[campo.key]);
+                  return (
+                    <div
+                      key={campo.key}
+                      onClick={() => alternarRascunho(campo.key)}
+                      className={`flex items-start gap-2.5 rounded-md border p-2 text-left transition-colors cursor-pointer select-none ${
+                        ativo ? "border-accent/60 bg-accent/5" : "border-border opacity-60 hover:opacity-100"
+                      }`}
+                    >
+                      <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                        ativo ? "border-accent bg-accent text-accent-foreground" : "border-muted-foreground bg-transparent"
+                      }`}>
+                        {ativo && <Check size={12} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground">{campo.label}</p>
+                        {campo.dica && (
+                          <p className="text-[10px] text-muted-foreground leading-tight">{campo.dica}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {todosCamposPersonalizados.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-border">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("Campos do Funil")} ({todosCamposPersonalizados.length})
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+                  {todosCamposPersonalizados.map((cp) => {
+                    const ativo = Boolean(rascunhoVisibilidade[cp.key]);
+                    return (
+                      <div
+                        key={cp.key}
+                        onClick={() => alternarRascunho(cp.key)}
+                        className={`flex items-start gap-2.5 rounded-md border p-2 text-left transition-colors cursor-pointer select-none ${
+                          ativo ? "border-accent/60 bg-accent/5" : "border-border opacity-60 hover:opacity-100"
+                        }`}
+                      >
+                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                          ativo ? "border-accent bg-accent text-accent-foreground" : "border-muted-foreground bg-transparent"
+                        }`}>
+                          {ativo && <Check size={12} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">{cp.label}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono">chave: {cp.key}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="pt-3 border-t border-border flex justify-between sm:justify-between">
+              <Button type="button" variant="ghost" onClick={() => setCustomizandoCampos(false)}>
+                {t("Cancelar")}
+              </Button>
+              <Button type="button" onClick={() => void salvarCustomizacao()} disabled={salvandoConfig}>
+                {salvandoConfig ? t("Salvando…") : t("Salvar e aplicar campos")}
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {!contactId && isContactVisible && (
             <>
@@ -760,6 +924,7 @@ export function NewLeadDialog({
             </Button>
           </DialogFooter>
         </form>
+        )}
       </DialogContent>
       {/* FORA do `DialogContent`: o formulário FECHA ao criar e a abertura da
           conversa (com a escolha de canal, #2382) vem depois — aqui ela
