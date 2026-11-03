@@ -499,8 +499,40 @@ export const pipelineConfigPatchSchema = z.object({
     )
     .max(MAX_ATALHOS)
     .optional(),
+  /**
+   * Configuração de visibilidade e ordem dos campos do modal "Novo Lead" por funil.
+   */
+  new_lead_form: z
+    .object({
+      fields: z
+        .array(
+          z.object({
+            key: z.string().min(1).max(80),
+            label: z.string().min(1).max(120),
+            visible: z.boolean(),
+            required: z.boolean().optional(),
+            is_standard: z.boolean().optional(),
+            order: z.number().int().optional(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
 });
 export type PipelineConfigPatch = z.infer<typeof pipelineConfigPatchSchema>;
+
+export type NewLeadFormFieldConfig = {
+  key: string;
+  label: string;
+  visible: boolean;
+  required?: boolean;
+  is_standard?: boolean;
+  order?: number;
+};
+
+export type NewLeadFormConfig = {
+  fields?: NewLeadFormFieldConfig[];
+};
 
 /**
  * A marca da INSTALAÇÃO (`platform_branding`) — o que a server action aceita.

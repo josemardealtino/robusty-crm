@@ -106,6 +106,9 @@ export async function updatePipelineConfig(
   if (parsed.data.atalhos !== undefined) {
     nextSettings.atalhos = parsed.data.atalhos;
   }
+  if (parsed.data.new_lead_form !== undefined) {
+    nextSettings.new_lead_form = parsed.data.new_lead_form;
+  }
 
   // Campo que passa a ser do Contato e que uma regra ativa do gatilho por data
   // lê (#2791): a regra seguiria ligada e pararia de disparar em silêncio.

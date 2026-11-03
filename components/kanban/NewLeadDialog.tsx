@@ -37,6 +37,7 @@ import { createLeadSchema, type CreateLeadInput } from "@/lib/schemas/leads";
 import { camposExigidosNoDestino, validaCamposExigidos } from "@/lib/leads/campos-exigidos";
 import { lerRecorrenciaDoFormulario } from "@/lib/leads/valor-recorrente";
 import { CustomFieldsEditor } from "@/components/contacts/CustomFieldsEditor";
+import type { CustomFieldDef, NewLeadFormFieldConfig } from "@/lib/schemas/settings";
 import { MOEDA_PADRAO, parseReaisToCents, simboloDaMoeda } from "@/lib/money";
 import { rotuloDoContato } from "@/lib/contacts/rotulo-do-contato";
 import type { Contact } from "@/lib/types/contacts";
@@ -207,6 +208,54 @@ export function NewLeadDialog({
     [settings, stageId],
   );
 
+  const newLeadForm = settings?.new_lead_form as { fields?: NewLeadFormFieldConfig[] } | undefined;
+
+  const isFieldVisible = useMemo(() => {
+    return (key: string, legacyDefault = true) => {
+      if (!newLeadForm?.fields || !Array.isArray(newLeadForm.fields)) {
+        return legacyDefault;
+      }
+      const entry = newLeadForm.fields.find((f) => f.key === key);
+      return entry !== undefined ? entry.visible : legacyDefault;
+    };
+  }, [newLeadForm]);
+
+  const todosCamposPersonalizados = useMemo(() => {
+    const fields = (settings?.fields as CustomFieldDef[] | undefined) ?? [];
+    return fields.filter((f) => f.escopo !== "contato");
+  }, [settings]);
+
+  const camposPersonalizadosVisiveis = useMemo(() => {
+    const rawFormConfig = newLeadForm?.fields;
+
+    return todosCamposPersonalizados.filter((campo) => {
+      // 1. Se a etapa atual exige este campo, ele sempre deve aparecer
+      const exigido = camposExigidos.some((e) => e.key === campo.key);
+      if (exigido) return true;
+
+      // 2. Se new_lead_form foi configurado, respeita a flag de visibilidade
+      if (rawFormConfig && Array.isArray(rawFormConfig)) {
+        const config = rawFormConfig.find((f) => f.key === campo.key);
+        if (config !== undefined) {
+          return config.visible;
+        }
+        return true;
+      }
+
+      // 3. Padrão legado se não configurado: apenas campos exigidos pela etapa
+      return false;
+    });
+  }, [todosCamposPersonalizados, camposExigidos, newLeadForm]);
+
+  const isContactVisible = isFieldVisible("contact", true);
+  const isTitleVisible = isFieldVisible("title", true);
+  const isDescriptionVisible = isFieldVisible("description", true);
+  const isStageVisible = isFieldVisible("stage_id", true);
+  const isValueVisible = isFieldVisible("value", true);
+  const isExpectedCloseDateVisible = isFieldVisible("expected_close_date", true);
+  const isRecorrenciaVisible = isFieldVisible("recorrencia", true);
+  const isTagsVisible = isFieldVisible("tags", true);
+
   /**
    * O QUE AINDA FALTA para esta criação — para o formulário não chamar a API
    * que já sabe que vai ser recusada (era a ida e volta que deixava o botão em
@@ -336,10 +385,21 @@ export function NewLeadDialog({
       return;
     }
 
+    let leadTitle = values.title?.trim() || "";
+    if (!leadTitle) {
+      if (contato) {
+        leadTitle = rotuloDoContato(contato, t);
+      }
+      if (!leadTitle || leadTitle.length < 2) {
+        const dataAtual = new Date().toLocaleDateString("pt-BR");
+        leadTitle = `Lead ${dataAtual}`;
+      }
+    }
+
     const payload: Record<string, unknown> = {
       pipeline_id: pipelineId,
-      stage_id: values.stage_id,
-      title: values.title.trim(),
+      stage_id: values.stage_id || initialStage,
+      title: leadTitle,
       // A moeda NÃO vai daqui. O browser não sabe a moeda da organização, e
       // mandar "BRL" fazia toda instalação em peso ou dólar cadastrar lead em
       // real. Omitir é o conserto: quem decide é o servidor, que lê a
@@ -471,7 +531,7 @@ export function NewLeadDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {!contactId && (
+          {!contactId && isContactVisible && (
             <>
               <SeletorDeContato escolhido={contato} onEscolher={escolherContato} />
               {faltaContato && (
@@ -482,145 +542,147 @@ export function NewLeadDialog({
             </>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="title">{t("Título")}</Label>
-            <Input
-              id="title"
-              placeholder={t("Ex: Pedido Maria — combo presente")}
-              {...form.register("title", { required: true, minLength: 2 })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">{t("Descrição")}</Label>
-            <Textarea
-              id="description"
-              rows={3}
-              placeholder={t("Contexto, observações, links…")}
-              {...form.register("description")}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t("Etapa")}</Label>
-            <Select
-              value={stageId}
-              onValueChange={(v) => form.setValue("stage_id", v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t("Selecione a etapa")} />
-              </SelectTrigger>
-              <SelectContent>
-                {stages
-                  .filter((s) => !s.is_archived)
-                  .map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          {isTitleVisible && (
             <div className="space-y-2">
-              {/* Negócio novo: o rótulo segue a moeda da organização, que é onde ele
-                  vai nascer. `R$` em duro mentia para quem opera em euro. */}
-              <Label htmlFor="valueReais">{t("Valor")} ({simboloDaMoeda(moedaDoValor)})</Label>
+              <Label htmlFor="title">{t("Título")}</Label>
               <Input
-                id="valueReais"
-                inputMode="decimal"
-                placeholder="0,00"
-                {...form.register("valueReais")}
+                id="title"
+                placeholder={t("Ex: Pedido Maria — combo presente")}
+                {...form.register("title", {
+                  required: isTitleVisible,
+                  minLength: isTitleVisible ? 2 : 0,
+                })}
               />
-              <EcoDoValor control={form.control} moeda={moedaDoValor} />
-              {form.formState.errors.valueReais && (
-                <p className="text-xs text-error-fg">
-                  {form.formState.errors.valueReais.message}
-                </p>
+            </div>
+          )}
+
+          {isDescriptionVisible && (
+            <div className="space-y-2">
+              <Label htmlFor="description">{t("Descrição")}</Label>
+              <Textarea
+                id="description"
+                rows={3}
+                placeholder={t("Contexto, observações, links…")}
+                {...form.register("description")}
+              />
+            </div>
+          )}
+
+          {isStageVisible && (
+            <div className="space-y-2">
+              <Label>{t("Etapa")}</Label>
+              <Select
+                value={stageId}
+                onValueChange={(v) => form.setValue("stage_id", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("Selecione a etapa")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {stages
+                    .filter((s) => !s.is_archived)
+                    .map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {(isValueVisible || isExpectedCloseDateVisible) && (
+            <div className={isValueVisible && isExpectedCloseDateVisible ? "grid grid-cols-2 gap-3" : "space-y-2"}>
+              {isValueVisible && (
+                <div className="space-y-2">
+                  <Label htmlFor="valueReais">{t("Valor")} ({simboloDaMoeda(moedaDoValor)})</Label>
+                  <Input
+                    id="valueReais"
+                    inputMode="decimal"
+                    placeholder="0,00"
+                    {...form.register("valueReais")}
+                  />
+                  <EcoDoValor control={form.control} moeda={moedaDoValor} />
+                  {form.formState.errors.valueReais && (
+                    <p className="text-xs text-error-fg">
+                      {form.formState.errors.valueReais.message}
+                    </p>
+                  )}
+                </div>
+              )}
+              {isExpectedCloseDateVisible && (
+                <div className="space-y-2">
+                  <Label htmlFor="expected_close_date">{t("Fechamento previsto")}</Label>
+                  <Input
+                    id="expected_close_date"
+                    type="date"
+                    {...form.register("expected_close_date")}
+                  />
+                </div>
               )}
             </div>
+          )}
+
+          {isRecorrenciaVisible && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="valorRecorrenteReais">
+                  {t("Valor recorrente (mensal)")} ({simboloDaMoeda(moedaDoValor)})
+                </Label>
+                <Input
+                  id="valorRecorrenteReais"
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  {...form.register("valorRecorrenteReais")}
+                />
+                <EcoDoValor
+                  control={form.control}
+                  moeda={moedaDoValor}
+                  campo="valorRecorrenteReais"
+                />
+                {form.formState.errors.valorRecorrenteReais && (
+                  <p className="text-xs text-error-fg">
+                    {form.formState.errors.valorRecorrenteReais.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="recorrenciaMeses">{t("Duração (meses)")}</Label>
+                <Input
+                  id="recorrenciaMeses"
+                  inputMode="numeric"
+                  placeholder={t("sem prazo")}
+                  {...form.register("recorrenciaMeses")}
+                />
+                {form.formState.errors.recorrenciaMeses && (
+                  <p className="text-xs text-error-fg">
+                    {form.formState.errors.recorrenciaMeses.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {isTagsVisible && (
             <div className="space-y-2">
-              <Label htmlFor="expected_close_date">{t("Fechamento previsto")}</Label>
+              <Label htmlFor="tagsRaw">{t("Tags (separadas por vírgula)")}</Label>
               <Input
-                id="expected_close_date"
-                type="date"
-                {...form.register("expected_close_date")}
+                id="tagsRaw"
+                placeholder="vip, recompra"
+                {...form.register("tagsRaw")}
               />
             </div>
-          </div>
+          )}
 
-          {/* A MENSALIDADE (fatia 1 da #3602) — ao lado do valor único, num
-              bloco próprio. Setup + mensalidade é o formato da maior parte do
-              que se vende aqui (agência, clínica, escola, software), e era
-              isso que ia para a descrição ou para uma etiqueta, onde nenhum
-              relatório enxerga. Opcional: quem vende uma vez só não preenche
-              nada e a tela fica como era. */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="valorRecorrenteReais">
-                {t("Valor recorrente (mensal)")} ({simboloDaMoeda(moedaDoValor)})
-              </Label>
-              <Input
-                id="valorRecorrenteReais"
-                inputMode="decimal"
-                placeholder="0,00"
-                {...form.register("valorRecorrenteReais")}
-              />
-              {/* O eco é a MESMA promessa do valor único: dinheiro não é
-                  interpretado em silêncio. */}
-              <EcoDoValor
-                control={form.control}
-                moeda={moedaDoValor}
-                campo="valorRecorrenteReais"
-              />
-              {form.formState.errors.valorRecorrenteReais && (
-                <p className="text-xs text-error-fg">
-                  {form.formState.errors.valorRecorrenteReais.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="recorrenciaMeses">{t("Duração (meses)")}</Label>
-              <Input
-                id="recorrenciaMeses"
-                inputMode="numeric"
-                placeholder={t("sem prazo")}
-                {...form.register("recorrenciaMeses")}
-              />
-              {form.formState.errors.recorrenciaMeses && (
-                <p className="text-xs text-error-fg">
-                  {form.formState.errors.recorrenciaMeses.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tagsRaw">{t("Tags (separadas por vírgula)")}</Label>
-            <Input
-              id="tagsRaw"
-              placeholder="vip, recompra"
-              {...form.register("tagsRaw")}
-            />
-          </div>
-
-          {/* OS CAMPOS QUE A ETAPA EXIGE (issue #3038) — pelo renderizador ÚNICO
-              dos campos personalizados (`CustomFieldsEditor`, o mesmo do dossiê
-              e do painel do inbox): o input certo por tipo, o campo condicional
-              (#2728) e o padrão do campo (#2730) vêm de graça, e nada aqui é um
-              formulário paralelo que divergiria no mês seguinte. O bloco só
-              existe quando a etapa ESCOLHIDA exige algo: funil sem
-              `obrigatorio_em` fica byte a byte como era. A frase do que falta é
-              a MESMA do servidor (`recusaDeCamposObrigatorios`), agora ao lado
-              do campo — o aviso antigo aparecia sem nada para preencher. */}
-          {camposExigidos.length > 0 && (
+          {camposPersonalizadosVisiveis.length > 0 && (
             <div className="space-y-3 rounded-md border border-border p-3">
               <p className="text-sm font-medium">
-                {t("A etapa escolhida exige alguns dados. Preencha para continuar.")}
+                {camposExigidos.length > 0
+                  ? t("Campos personalizados (alguns são exigidos pela etapa):")
+                  : t("Campos personalizados:")}
               </p>
               <CustomFieldsEditor
-                fields={camposExigidos}
+                fields={camposPersonalizadosVisiveis}
                 value={camposDoNegocio}
                 onChange={setCamposDoNegocio}
                 mode="lead"

@@ -52,6 +52,7 @@ import { CaretDown, Plus, Trash } from "@/lib/ui/icons";
 import { entradaDoInboxDeclarada } from "@/lib/leads/entrada-do-inbox";
 import { AgentMappingSection, ancoraDoMapeamento } from "./_mapping";
 import { StagesSection, ancoraDasEtapas } from "./_stages";
+import { NewLeadFormSection } from "./_new-lead-form";
 
 export interface PipelineRow {
   id: string;
@@ -398,6 +399,11 @@ function CardDoFunil({
       <div className="border-t border-border pt-6">
         <AgentMappingSection pipelineId={pipeline.id} ancoraEtapas={ancoraDasEtapas(pipeline.id)} />
       </div>
+      {podeEditarConfig && (
+        <div className="border-t border-border pt-6">
+          <NewLeadFormSection pipeline={pipeline} />
+        </div>
+      )}
       {podeEditarConfig && (
         <div className="space-y-4 border-t border-border pt-6">
           <Button
