@@ -167,6 +167,16 @@ export function EditLeadDialog({ open, onOpenChange, lead, pipelineId }: Props) 
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {lead.commercial_id && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">{t("Identificador único")}</Label>
+              <div className="flex items-center justify-between rounded-md border border-input bg-muted/40 px-3 py-1.5 text-xs font-mono font-semibold text-accent">
+                <span>{lead.commercial_id}</span>
+                <span className="text-[10px] text-muted-foreground font-sans font-normal">{t("Imutável")}</span>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="title">{t("Título")}</Label>
             <Input

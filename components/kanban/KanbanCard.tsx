@@ -123,6 +123,7 @@ export function KanbanCard({
   );
   const state = resolveCardState(card, t);
   const age = stageAgeLabel(card.hoursInStage, t);
+  const commercialId = lead.commercial_id ?? card.commercialId;
 
   // Clique ABRE o dossiê; ctrl/cmd+clique SELECIONA; shift+clique estende até a
   // âncora. "Clicar abre" é a convenção mais forte, e seleção múltipla é recurso
@@ -259,38 +260,43 @@ export function KanbanCard({
                   aria-label={`${t("Tag")}: ${card.canonicalTag}`}
                 />
               )}
-              {/* O TÍTULO é o elemento ativável, não o card inteiro.
-                  `role="group"` no card foi decisão da wave 2 (o dnd marca o
-                  handle como button, e com o menu de ações dentro isso vira
-                  nested-interactive no axe). Voltar o card para `button`
-                  reintroduziria aquele defeito com cara de melhoria de
-                  acessibilidade; deixar só onKeyDown daria uma ação que existe
-                  e NÃO É DESCOBERTA por leitor de tela. O título como button
-                  atende mouse, teclado e leitor sem desfazer a decisão antiga. */}
-              <h3
-                // Compacto: UMA linha, com o texto inteiro no `title` (e no
-                // dossiê). O dado não some — some a segunda linha.
-                title={denso ? card.title : undefined}
-                className={cn(
-                  "text-sm font-medium leading-5 text-text",
-                  denso ? "line-clamp-1 h-5" : "line-clamp-2 h-10",
+              <div className="flex flex-col min-w-0 flex-1">
+                {commercialId && (
+                  <span
+                    title={t("Identificador único comercial")}
+                    className={cn(
+                      "inline-block font-mono font-bold text-accent tracking-wide leading-tight",
+                      denso ? "text-[9px] mb-0.5" : "text-[10px] mb-1"
+                    )}
+                  >
+                    {commercialId}
+                  </span>
                 )}
-              >
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    // `stopPropagation` continua: sem ele o handler do card
-                    // rodaria de novo e o gesto seria contado duas vezes (um
-                    // ctrl+clique marcaria e desmarcaria no mesmo instante).
-                    // Por isso a DECISÃO tem de ser tomada aqui também.
-                    e.stopPropagation();
-                    decidirClique(e);
-                  }}
-                  className="text-left hover:underline"
+                <h3
+                  // Compacto: UMA linha, com o texto inteiro no `title` (e no
+                  // dossiê). O dado não some — some a segunda linha.
+                  title={denso ? card.title : undefined}
+                  className={cn(
+                    "text-sm font-medium leading-5 text-text",
+                    denso ? "line-clamp-1 h-5" : "line-clamp-2 h-10",
+                  )}
                 >
-                  {card.title}
-                </button>
-              </h3>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      // `stopPropagation` continua: sem ele o handler do card
+                      // rodaria de novo e o gesto seria contado duas vezes (um
+                      // ctrl+clique marcaria e desmarcaria no mesmo instante).
+                      // Por isso a DECISÃO tem de ser tomada aqui também.
+                      e.stopPropagation();
+                      decidirClique(e);
+                    }}
+                    className="text-left hover:underline"
+                  >
+                    {card.title}
+                  </button>
+                </h3>
+              </div>
             </div>
             {!somenteLeitura && (
               <KanbanCardActions

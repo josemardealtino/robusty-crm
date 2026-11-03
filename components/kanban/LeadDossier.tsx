@@ -2,6 +2,8 @@
 
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { Copy } from "@/lib/ui/icons";
 
 import { useT } from "@/hooks/i18n/useT";
 import { useActiveOrg, usePermission, useUser } from "@/hooks/auth/AuthProvider";
@@ -189,6 +191,24 @@ export function LeadDossier({
         data-refetch-divergencias={timeline.seguranca.divergencias}
       >
         <SheetHeader className="pb-3">
+          {lead.commercial_id && (
+            <div className="flex items-center justify-between pb-1">
+              <span className="inline-flex items-center gap-1.5 rounded bg-accent/10 border border-accent/25 px-2 py-0.5 font-mono text-xs font-bold text-accent tracking-wider">
+                <span>{lead.commercial_id}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(lead.commercial_id!);
+                    toast.success(t("ID copiado"));
+                  }}
+                  title={t("Copiar ID")}
+                  className="hover:opacity-75 cursor-pointer ml-1 text-accent inline-flex items-center"
+                >
+                  <Copy size={13} />
+                </button>
+              </span>
+            </div>
+          )}
           <SheetTitle className="text-base leading-6">{lead.title}</SheetTitle>
         </SheetHeader>
 

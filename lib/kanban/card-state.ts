@@ -12,6 +12,7 @@ import type { Lead } from "@/lib/types/leads";
  */
 export interface CardInput {
   id: string;
+  commercialId?: string | null;
   title: string;
   valueCents: number | null;
   /**
@@ -78,6 +79,7 @@ export function buildCardInput(
   lead: Pick<
     Lead,
     | "id"
+    | "commercial_id"
     | "title"
     | "value_cents"
     | "recurring_value_cents"
@@ -124,6 +126,7 @@ export function buildCardInput(
 
   return {
     id: lead.id,
+    commercialId: lead.commercial_id ?? null,
     title: lead.title,
     valueCents: lead.value_cents,
     // Sem `?? 0`: "não tem mensalidade" e "mensalidade zero" são estados

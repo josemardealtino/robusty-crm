@@ -224,7 +224,7 @@ export function applyFilters(
     if (!passaMarcador(l)) return false;
     if (
       search &&
-      !`${l.title} ${l.description ?? ""} ${l.contact_phone ?? ""}`.toLowerCase().includes(search) &&
+      !`${l.title} ${l.description ?? ""} ${l.contact_phone ?? ""} ${l.commercial_id ?? ""}`.toLowerCase().includes(search) &&
       !(buscaDeTelefone && (l.contact_phone ?? "").replace(/\D/g, "").includes(buscaDeTelefone))
     )
       return false;

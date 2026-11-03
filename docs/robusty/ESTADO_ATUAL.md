@@ -48,7 +48,7 @@
 | **Campos Condicionais** | **Existe nativamente** | Implementado via `mostrar_quando` em `lib/schemas/mostrar-quando.ts` e renderizado em `LeadFieldsForm.tsx`. |
 | **Validações por Etapa / Ganho / Perda** | **Existe nativamente** | Implementado via `obrigatorio_em` em `lib/leads/campos-exigidos.ts`. |
 | **Múltipla escolha nativa** | **Existe nativamente** | Implementado via `searchable_select` com `multiple: true`. |
-| **ID Comercial Único (ex: `ROB-2026-000001`)** | **Exige desenvolvimento** | A base atual usa `title` como texto livre ou gerado pelo cliente. A geração automática sequencial no servidor com prefixo personalizado (`ROB-YYYY-XXXXXX`) é uma funcionalidade a ser implementada na camada de API/Trigger. |
+| **ID Comercial Único (ex: `ROB-2026-000001`)** | **Implementado e ativo** | Gerado automaticamente e de forma atômica no banco Postgres via trigger `trg_generate_lead_commercial_id` com sequence `seq_crm_leads_commercial_id`. Exibido no card do Kanban, no perfil do lead (com botão de cópia rápida) e suportado na busca do funil. |
 | **Conversão Leads -> Pedidos** | **Backlog futuro** | Conforme especificado, a conversão manual/automática com cópia de campos entre os dois funis fica para a próxima fase. |
 
 ---

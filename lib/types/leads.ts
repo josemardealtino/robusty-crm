@@ -35,6 +35,8 @@ export interface LeadOwnerAgent {
 
 export interface Lead {
   id: string;
+  /** Identificador único comercial imutável (ex: ROB-2026-000001). */
+  commercial_id?: string | null;
   organization_id: string;
   pipeline_id: string;
   stage_id: string;
