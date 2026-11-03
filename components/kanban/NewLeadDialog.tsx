@@ -45,8 +45,8 @@ import { AbrirConversaAposSalvar } from "@/components/channels/AbrirConversaApos
 import type { AlvoDeConversa } from "@/components/channels/SeletorDeCanalParaConversa";
 import { EcoDoValor } from "./EcoDoValor";
 import { SeletorDeContato } from "./SeletorDeContato";
-import { Gear, Check } from "@/lib/ui/icons";
-import { CAMPOS_PADRAO_DISPONIVEIS } from "@/app/app/settings/tenant/pipelines/_new-lead-form";
+import { Gear, CaretUp, CaretDown, Eye, EyeSlash } from "@/lib/ui/icons";
+import { CAMPOS_PADRAO_DISPONIVEIS, obterListaOrdenadaDeCampos } from "@/app/app/settings/tenant/pipelines/_new-lead-form";
 import { updatePipelineConfig } from "@/app/actions/settings/updatePipelineConfig";
 
 interface FormShape {
@@ -216,7 +216,6 @@ export function NewLeadDialog({
   const [localFormConfig, setLocalFormConfig] = useState<NewLeadFormFieldConfig[] | null>(() => {
     return (settings?.new_lead_form as { fields?: NewLeadFormFieldConfig[] } | undefined)?.fields ?? null;
   });
-  const [rascunhoVisibilidade, setRascunhoVisibilidade] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (settings?.new_lead_form) {
@@ -226,94 +225,51 @@ export function NewLeadDialog({
 
   const activeFormConfig = localFormConfig ?? (settings?.new_lead_form as { fields?: NewLeadFormFieldConfig[] } | undefined)?.fields;
 
-  const isFieldVisible = useMemo(() => {
-    return (key: string, legacyDefault = true) => {
-      if (!activeFormConfig || !Array.isArray(activeFormConfig)) {
-        return legacyDefault;
-      }
-      const entry = activeFormConfig.find((f) => f.key === key);
-      return entry !== undefined ? entry.visible : legacyDefault;
-    };
-  }, [activeFormConfig]);
-
   const todosCamposPersonalizados = useMemo(() => {
     const fields = (settings?.fields as CustomFieldDef[] | undefined) ?? [];
     return fields.filter((f) => f.escopo !== "contato");
   }, [settings]);
 
-  const camposPersonalizadosVisiveis = useMemo(() => {
-    return todosCamposPersonalizados.filter((campo) => {
-      // 1. Se a etapa atual exige este campo, ele sempre deve aparecer
-      const exigido = camposExigidos.some((e) => e.key === campo.key);
-      if (exigido) return true;
+  // Lista ordenada consolidada de campos para exibição e edição
+  const camposOrdenados = useMemo(
+    () => obterListaOrdenadaDeCampos(activeFormConfig, todosCamposPersonalizados),
+    [activeFormConfig, todosCamposPersonalizados]
+  );
 
-      // 2. Se new_lead_form foi configurado, respeita a flag de visibilidade
-      if (activeFormConfig && Array.isArray(activeFormConfig)) {
-        const config = activeFormConfig.find((f) => f.key === campo.key);
-        if (config !== undefined) {
-          return config.visible;
-        }
-        return false;
-      }
-
-      // 3. Padrão se não configurado: falso (apenas campos exigidos pela etapa)
-      return false;
-    });
-  }, [todosCamposPersonalizados, camposExigidos, activeFormConfig]);
-
-  const isContactVisible = isFieldVisible("contact", true);
-  const isTitleVisible = isFieldVisible("title", true);
-  const isDescriptionVisible = isFieldVisible("description", true);
-  const isStageVisible = isFieldVisible("stage_id", true);
-  const isValueVisible = isFieldVisible("value", false);
-  const isExpectedCloseDateVisible = isFieldVisible("expected_close_date", false);
-  const isRecorrenciaVisible = isFieldVisible("recorrencia", false);
-  const isTagsVisible = isFieldVisible("tags", false);
+  const [rascunhoCampos, setRascunhoCampos] = useState<NewLeadFormFieldConfig[]>([]);
 
   function iniciarCustomizacao() {
-    const mapa: Record<string, boolean> = {};
-    CAMPOS_PADRAO_DISPONIVEIS.forEach((padrao) => {
-      const salvo = activeFormConfig?.find((f) => f.key === padrao.key);
-      mapa[padrao.key] = salvo ? salvo.visible : padrao.defaultVisible;
-    });
-    todosCamposPersonalizados.forEach((cp) => {
-      const salvo = activeFormConfig?.find((f) => f.key === cp.key);
-      mapa[cp.key] = salvo ? salvo.visible : false;
-    });
-    setRascunhoVisibilidade(mapa);
+    setRascunhoCampos([...camposOrdenados]);
     setCustomizandoCampos(true);
   }
 
-  function alternarRascunho(chave: string) {
-    setRascunhoVisibilidade((prev) => ({
-      ...prev,
-      [chave]: !prev[chave],
-    }));
+  function alternarRascunho(index: number) {
+    setRascunhoCampos((prev) =>
+      prev.map((c, i) => (i === index ? { ...c, visible: !c.visible } : c))
+    );
+  }
+
+  function moverRascunho(index: number, direcao: "cima" | "baixo") {
+    setRascunhoCampos((prev) => {
+      const target = direcao === "cima" ? index - 1 : index + 1;
+      if (target < 0 || target >= prev.length) return prev;
+      const copy = [...prev];
+      const temp = copy[index]!;
+      copy[index] = copy[target]!;
+      copy[target] = temp;
+      return copy;
+    });
+  }
+
+  function marcarTodosRascunho(visivel: boolean) {
+    setRascunhoCampos((prev) => prev.map((c) => ({ ...c, visible: visivel })));
   }
 
   async function salvarCustomizacao() {
     setSalvandoConfig(true);
     try {
-      const fieldsConfig: NewLeadFormFieldConfig[] = [];
-      CAMPOS_PADRAO_DISPONIVEIS.forEach((p) => {
-        fieldsConfig.push({
-          key: p.key,
-          label: p.label,
-          visible: Boolean(rascunhoVisibilidade[p.key]),
-          is_standard: true,
-        });
-      });
-      todosCamposPersonalizados.forEach((cp) => {
-        fieldsConfig.push({
-          key: cp.key,
-          label: cp.label,
-          visible: Boolean(rascunhoVisibilidade[cp.key]),
-          is_standard: false,
-        });
-      });
-
       const res = await updatePipelineConfig(pipelineId, {
-        new_lead_form: { fields: fieldsConfig },
+        new_lead_form: { fields: rascunhoCampos },
       });
 
       if (!res.ok) {
@@ -321,9 +277,9 @@ export function NewLeadDialog({
         return;
       }
 
-      setLocalFormConfig(fieldsConfig);
+      setLocalFormConfig(rascunhoCampos);
       setCustomizandoCampos(false);
-      toast.success(t("Campos do formulário salvos com sucesso!"));
+      toast.success(t("Campos e ordem do formulário salvos com sucesso!"));
     } finally {
       setSalvandoConfig(false);
     }
@@ -620,69 +576,111 @@ export function NewLeadDialog({
 
         {customizandoCampos ? (
           <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("Campos Padrão do Sistema")}
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {CAMPOS_PADRAO_DISPONIVEIS.map((campo) => {
-                  const ativo = Boolean(rascunhoVisibilidade[campo.key]);
-                  return (
-                    <div
-                      key={campo.key}
-                      onClick={() => alternarRascunho(campo.key)}
-                      className={`flex items-start gap-2.5 rounded-md border p-2 text-left transition-colors cursor-pointer select-none ${
-                        ativo ? "border-accent/60 bg-accent/5" : "border-border opacity-60 hover:opacity-100"
-                      }`}
-                    >
-                      <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                        ativo ? "border-accent bg-accent text-accent-foreground" : "border-muted-foreground bg-transparent"
-                      }`}>
-                        {ativo && <Check size={12} />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground">{campo.label}</p>
-                        {campo.dica && (
-                          <p className="text-[10px] text-muted-foreground leading-tight">{campo.dica}</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{t("Use as setas para alterar a ordem e selecione para exibir ou ocultar:")}</span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => marcarTodosRascunho(true)}
+                >
+                  {t("Marcar todos")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => marcarTodosRascunho(false)}
+                >
+                  {t("Desmarcar todos")}
+                </Button>
               </div>
             </div>
 
-            {todosCamposPersonalizados.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-border">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("Campos do Funil")} ({todosCamposPersonalizados.length})
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                  {todosCamposPersonalizados.map((cp) => {
-                    const ativo = Boolean(rascunhoVisibilidade[cp.key]);
-                    return (
-                      <div
-                        key={cp.key}
-                        onClick={() => alternarRascunho(cp.key)}
-                        className={`flex items-start gap-2.5 rounded-md border p-2 text-left transition-colors cursor-pointer select-none ${
-                          ativo ? "border-accent/60 bg-accent/5" : "border-border opacity-60 hover:opacity-100"
-                        }`}
-                      >
-                        <div className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                          ativo ? "border-accent bg-accent text-accent-foreground" : "border-muted-foreground bg-transparent"
-                        }`}>
-                          {ativo && <Check size={12} />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-foreground truncate">{cp.label}</p>
-                          <p className="text-[10px] text-muted-foreground font-mono">chave: {cp.key}</p>
-                        </div>
+            <div className="space-y-2 max-h-[58vh] overflow-y-auto pr-1">
+              {rascunhoCampos.map((campo, idx) => {
+                const ativo = campo.visible;
+                const padrao = CAMPOS_PADRAO_DISPONIVEIS.find((p) => p.key === campo.key);
+                const cp = !campo.is_standard
+                  ? todosCamposPersonalizados.find((c) => c.key === campo.key)
+                  : null;
+
+                return (
+                  <div
+                    key={campo.key}
+                    className={`flex items-center justify-between gap-3 rounded-md border p-2.5 transition-colors ${
+                      ativo
+                        ? "border-accent/40 bg-accent/5"
+                        : "border-border bg-background opacity-60 hover:opacity-100"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      {/* Botões de reordenação */}
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => moverRascunho(idx, "cima")}
+                          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                          title={t("Mover para cima")}
+                        >
+                          <CaretUp size={14} weight="bold" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === rascunhoCampos.length - 1}
+                          onClick={() => moverRascunho(idx, "baixo")}
+                          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                          title={t("Mover para baixo")}
+                        >
+                          <CaretDown size={14} weight="bold" />
+                        </button>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+
+                      <span className="text-xs font-mono font-medium text-muted-foreground w-6 text-center shrink-0">
+                        #{idx + 1}
+                      </span>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-foreground truncate">
+                            {campo.label}
+                          </span>
+                          {campo.is_standard ? (
+                            <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                              {t("Padrão")}
+                            </span>
+                          ) : (
+                            <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-accent/20 text-accent">
+                              {cp?.type ?? t("Personalizado")}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                          {padrao?.dica ?? `chave: ${campo.key}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => alternarRascunho(idx)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium cursor-pointer transition-colors shrink-0 ${
+                        ativo
+                          ? "bg-accent text-accent-foreground shadow-sm"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      {ativo ? <Eye size={13} /> : <EyeSlash size={13} />}
+                      <span>{ativo ? t("Visível") : t("Oculto")}</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
 
             <DialogFooter className="pt-3 border-t border-border flex justify-between sm:justify-between">
               <Button type="button" variant="ghost" onClick={() => setCustomizandoCampos(false)}>
@@ -695,171 +693,193 @@ export function NewLeadDialog({
           </div>
         ) : (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {!contactId && isContactVisible && (
-            <>
-              <SeletorDeContato escolhido={contato} onEscolher={escolherContato} />
-              {faltaContato && (
-                <p className="text-xs text-muted-foreground">
-                  {t("Sem contato, este negócio não recebe WhatsApp nem entra nas automações.")}
-                </p>
+          {camposOrdenados.map((campoConfig) => {
+            const isCustom = !campoConfig.is_standard;
+            const campoDef = isCustom
+              ? todosCamposPersonalizados.find((c) => c.key === campoConfig.key)
+              : null;
+            const isExigidoPelaEtapa = isCustom && camposExigidos.some((e) => e.key === campoConfig.key);
+
+            if (!campoConfig.visible && !isExigidoPelaEtapa) {
+              return null;
+            }
+
+            switch (campoConfig.key) {
+              case "contact":
+                if (contactId) return null;
+                return (
+                  <div key="contact" className="space-y-2">
+                    <SeletorDeContato escolhido={contato} onEscolher={escolherContato} />
+                    {faltaContato && (
+                      <p className="text-xs text-muted-foreground">
+                        {t("Sem contato, este negócio não recebe WhatsApp nem entra nas automações.")}
+                      </p>
+                    )}
+                  </div>
+                );
+
+              case "title":
+                return (
+                  <div key="title" className="space-y-2">
+                    <Label htmlFor="title">{t("Título")}</Label>
+                    <Input
+                      id="title"
+                      placeholder={t("Ex: Pedido Maria — combo presente")}
+                      {...form.register("title", {
+                        required: campoConfig.visible,
+                        minLength: campoConfig.visible ? 2 : 0,
+                      })}
+                    />
+                  </div>
+                );
+
+              case "description":
+                return (
+                  <div key="description" className="space-y-2">
+                    <Label htmlFor="description">{t("Descrição")}</Label>
+                    <Textarea
+                      id="description"
+                      rows={3}
+                      placeholder={t("Contexto, observações, links…")}
+                      {...form.register("description")}
+                    />
+                  </div>
+                );
+
+              case "stage_id":
+                return (
+                  <div key="stage_id" className="space-y-2">
+                    <Label>{t("Etapa")}</Label>
+                    <Select
+                      value={stageId}
+                      onValueChange={(v) => form.setValue("stage_id", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("Selecione a etapa")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stages
+                          .filter((s) => !s.is_archived)
+                          .map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+
+              case "value":
+                return (
+                  <div key="value" className="space-y-2">
+                    <Label htmlFor="valueReais">
+                      {t("Valor")} ({simboloDaMoeda(moedaDoValor)})
+                    </Label>
+                    <Input
+                      id="valueReais"
+                      inputMode="decimal"
+                      placeholder="0,00"
+                      {...form.register("valueReais")}
+                    />
+                    <EcoDoValor control={form.control} moeda={moedaDoValor} />
+                    {form.formState.errors.valueReais && (
+                      <p className="text-xs text-error-fg">
+                        {form.formState.errors.valueReais.message}
+                      </p>
+                    )}
+                  </div>
+                );
+
+              case "expected_close_date":
+                return (
+                  <div key="expected_close_date" className="space-y-2">
+                    <Label htmlFor="expected_close_date">{t("Fechamento previsto")}</Label>
+                    <Input
+                      id="expected_close_date"
+                      type="date"
+                      {...form.register("expected_close_date")}
+                    />
+                  </div>
+                );
+
+              case "recorrencia":
+                return (
+                  <div key="recorrencia" className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="valorRecorrenteReais">
+                        {t("Valor recorrente (mensal)")} ({simboloDaMoeda(moedaDoValor)})
+                      </Label>
+                      <Input
+                        id="valorRecorrenteReais"
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        {...form.register("valorRecorrenteReais")}
+                      />
+                      <EcoDoValor
+                        control={form.control}
+                        moeda={moedaDoValor}
+                        campo="valorRecorrenteReais"
+                      />
+                      {form.formState.errors.valorRecorrenteReais && (
+                        <p className="text-xs text-error-fg">
+                          {form.formState.errors.valorRecorrenteReais.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="recorrenciaMeses">{t("Duração (meses)")}</Label>
+                      <Input
+                        id="recorrenciaMeses"
+                        inputMode="numeric"
+                        placeholder={t("sem prazo")}
+                        {...form.register("recorrenciaMeses")}
+                      />
+                      {form.formState.errors.recorrenciaMeses && (
+                        <p className="text-xs text-error-fg">
+                          {form.formState.errors.recorrenciaMeses.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+
+              case "tags":
+                return (
+                  <div key="tags" className="space-y-2">
+                    <Label htmlFor="tagsRaw">{t("Tags (separadas por vírgula)")}</Label>
+                    <Input
+                      id="tagsRaw"
+                      placeholder="vip, recompra"
+                      {...form.register("tagsRaw")}
+                    />
+                  </div>
+                );
+
+              default:
+                if (campoDef) {
+                  return (
+                    <div key={campoConfig.key} className="space-y-1">
+                      <CustomFieldsEditor
+                        fields={[campoDef]}
+                        value={camposDoNegocio}
+                        onChange={setCamposDoNegocio}
+                        mode="lead"
+                      />
+                    </div>
+                  );
+                }
+                return null;
+            }
+          })}
+
+          {faltandoNaEtapa.length > 0 && (
+            <p role="alert" className="text-xs text-error-fg">
+              {t("Preencha os campos obrigatórios antes de continuar: {campos}.").replace(
+                "{campos}",
+                faltandoNaEtapa.map((campo) => campo.rotulo).join(", "),
               )}
-            </>
-          )}
-
-          {isTitleVisible && (
-            <div className="space-y-2">
-              <Label htmlFor="title">{t("Título")}</Label>
-              <Input
-                id="title"
-                placeholder={t("Ex: Pedido Maria — combo presente")}
-                {...form.register("title", {
-                  required: isTitleVisible,
-                  minLength: isTitleVisible ? 2 : 0,
-                })}
-              />
-            </div>
-          )}
-
-          {isDescriptionVisible && (
-            <div className="space-y-2">
-              <Label htmlFor="description">{t("Descrição")}</Label>
-              <Textarea
-                id="description"
-                rows={3}
-                placeholder={t("Contexto, observações, links…")}
-                {...form.register("description")}
-              />
-            </div>
-          )}
-
-          {isStageVisible && (
-            <div className="space-y-2">
-              <Label>{t("Etapa")}</Label>
-              <Select
-                value={stageId}
-                onValueChange={(v) => form.setValue("stage_id", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("Selecione a etapa")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {stages
-                    .filter((s) => !s.is_archived)
-                    .map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {(isValueVisible || isExpectedCloseDateVisible) && (
-            <div className={isValueVisible && isExpectedCloseDateVisible ? "grid grid-cols-2 gap-3" : "space-y-2"}>
-              {isValueVisible && (
-                <div className="space-y-2">
-                  <Label htmlFor="valueReais">{t("Valor")} ({simboloDaMoeda(moedaDoValor)})</Label>
-                  <Input
-                    id="valueReais"
-                    inputMode="decimal"
-                    placeholder="0,00"
-                    {...form.register("valueReais")}
-                  />
-                  <EcoDoValor control={form.control} moeda={moedaDoValor} />
-                  {form.formState.errors.valueReais && (
-                    <p className="text-xs text-error-fg">
-                      {form.formState.errors.valueReais.message}
-                    </p>
-                  )}
-                </div>
-              )}
-              {isExpectedCloseDateVisible && (
-                <div className="space-y-2">
-                  <Label htmlFor="expected_close_date">{t("Fechamento previsto")}</Label>
-                  <Input
-                    id="expected_close_date"
-                    type="date"
-                    {...form.register("expected_close_date")}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {isRecorrenciaVisible && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="valorRecorrenteReais">
-                  {t("Valor recorrente (mensal)")} ({simboloDaMoeda(moedaDoValor)})
-                </Label>
-                <Input
-                  id="valorRecorrenteReais"
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  {...form.register("valorRecorrenteReais")}
-                />
-                <EcoDoValor
-                  control={form.control}
-                  moeda={moedaDoValor}
-                  campo="valorRecorrenteReais"
-                />
-                {form.formState.errors.valorRecorrenteReais && (
-                  <p className="text-xs text-error-fg">
-                    {form.formState.errors.valorRecorrenteReais.message}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="recorrenciaMeses">{t("Duração (meses)")}</Label>
-                <Input
-                  id="recorrenciaMeses"
-                  inputMode="numeric"
-                  placeholder={t("sem prazo")}
-                  {...form.register("recorrenciaMeses")}
-                />
-                {form.formState.errors.recorrenciaMeses && (
-                  <p className="text-xs text-error-fg">
-                    {form.formState.errors.recorrenciaMeses.message}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {isTagsVisible && (
-            <div className="space-y-2">
-              <Label htmlFor="tagsRaw">{t("Tags (separadas por vírgula)")}</Label>
-              <Input
-                id="tagsRaw"
-                placeholder="vip, recompra"
-                {...form.register("tagsRaw")}
-              />
-            </div>
-          )}
-
-          {camposPersonalizadosVisiveis.length > 0 && (
-            <div className="space-y-3 rounded-md border border-border p-3">
-              <p className="text-sm font-medium">
-                {camposExigidos.length > 0
-                  ? t("Campos personalizados (alguns são exigidos pela etapa):")
-                  : t("Campos personalizados:")}
-              </p>
-              <CustomFieldsEditor
-                fields={camposPersonalizadosVisiveis}
-                value={camposDoNegocio}
-                onChange={setCamposDoNegocio}
-                mode="lead"
-              />
-              {faltandoNaEtapa.length > 0 && (
-                <p role="alert" className="text-xs text-error-fg">
-                  {t("Preencha os campos obrigatórios antes de continuar: {campos}.").replace(
-                    "{campos}",
-                    faltandoNaEtapa.map((campo) => campo.rotulo).join(", "),
-                  )}
-                </p>
-              )}
-            </div>
+            </p>
           )}
 
           {/* O AVISO SEM BLOQUEIO (#1751): aparece quando já existe negócio

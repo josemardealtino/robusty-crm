@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { updatePipelineConfig } from "@/app/actions/settings/updatePipelineConfig";
 import type { CustomFieldDef, NewLeadFormFieldConfig } from "@/lib/schemas/settings";
-import { CaretDown, CaretUp, Check, Eye, EyeSlash } from "@/lib/ui/icons";
+import { CaretDown, CaretUp, Eye, EyeSlash } from "@/lib/ui/icons";
 
 interface Props {
   pipeline: {
@@ -27,6 +27,73 @@ export const CAMPOS_PADRAO_DISPONIVEIS: { key: string; label: string; dica?: str
   { key: "tags", label: "Tags", dica: "Etiquetas separadas por vírgula", defaultVisible: false },
 ];
 
+/**
+ * Combina a configuração salva com todos os campos disponíveis (padrão e personalizados),
+ * preservando a ordem exata definida pelo usuário. Campos novos não configurados
+ * são adicionados ao final.
+ */
+export function obterListaOrdenadaDeCampos(
+  savedFields: NewLeadFormFieldConfig[] | undefined | null,
+  camposPersonalizados: CustomFieldDef[]
+): NewLeadFormFieldConfig[] {
+  const result: NewLeadFormFieldConfig[] = [];
+  const chavesProcessadas = new Set<string>();
+
+  // 1. Processar itens salvos na ordem em que foram salvos
+  if (Array.isArray(savedFields)) {
+    for (const saved of savedFields) {
+      const padrao = CAMPOS_PADRAO_DISPONIVEIS.find((p) => p.key === saved.key);
+      const cp = camposPersonalizados.find((c) => c.key === saved.key);
+
+      if (padrao) {
+        result.push({
+          key: saved.key,
+          label: padrao.label,
+          visible: saved.visible,
+          is_standard: true,
+        });
+        chavesProcessadas.add(saved.key);
+      } else if (cp) {
+        result.push({
+          key: saved.key,
+          label: cp.label,
+          visible: saved.visible,
+          is_standard: false,
+        });
+        chavesProcessadas.add(saved.key);
+      }
+    }
+  }
+
+  // 2. Adicionar campos padrão que não estavam na lista salva
+  for (const padrao of CAMPOS_PADRAO_DISPONIVEIS) {
+    if (!chavesProcessadas.has(padrao.key)) {
+      result.push({
+        key: padrao.key,
+        label: padrao.label,
+        visible: padrao.defaultVisible,
+        is_standard: true,
+      });
+      chavesProcessadas.add(padrao.key);
+    }
+  }
+
+  // 3. Adicionar campos personalizados que não estavam na lista salva
+  for (const cp of camposPersonalizados) {
+    if (!chavesProcessadas.has(cp.key)) {
+      result.push({
+        key: cp.key,
+        label: cp.label,
+        visible: false,
+        is_standard: false,
+      });
+      chavesProcessadas.add(cp.key);
+    }
+  }
+
+  return result;
+}
+
 export function NewLeadFormSection({ pipeline }: Props) {
   const t = useT();
   const [aberto, setAberto] = useState(false);
@@ -38,72 +105,40 @@ export function NewLeadFormSection({ pipeline }: Props) {
     (f) => f.escopo !== "contato"
   );
 
-  // Inicializar estado local
-  const [estadoCampos, setEstadoCampos] = useState<Record<string, boolean>>(() => {
-    const mapa: Record<string, boolean> = {};
+  // Inicializar estado local com lista ordenada
+  const [listaCampos, setListaCampos] = useState<NewLeadFormFieldConfig[]>(() =>
+    obterListaOrdenadaDeCampos(rawFormConfig, camposPersonalizados)
+  );
 
-    // 1. Campos padrão
-    CAMPOS_PADRAO_DISPONIVEIS.forEach((padrao) => {
-      const salvo = rawFormConfig?.find((f) => f.key === padrao.key);
-      mapa[padrao.key] = salvo ? salvo.visible : padrao.defaultVisible;
-    });
-
-    // 2. Campos personalizados
-    camposPersonalizados.forEach((cp) => {
-      const salvo = rawFormConfig?.find((f) => f.key === cp.key);
-      // Se não havia configuração salva ainda, campos personalizados iniciam como visíveis por padrão
-      mapa[cp.key] = salvo ? salvo.visible : true;
-    });
-
-    return mapa;
-  });
-
-  const totalAtivos = Object.values(estadoCampos).filter(Boolean).length;
+  const totalAtivos = listaCampos.filter((c) => c.visible).length;
 
   function alternar(key: string) {
-    setEstadoCampos((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+    setListaCampos((prev) =>
+      prev.map((c) => (c.key === key ? { ...c, visible: !c.visible } : c))
+    );
+  }
+
+  function mover(index: number, direcao: "cima" | "baixo") {
+    setListaCampos((prev) => {
+      const targetIndex = direcao === "cima" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const copy = [...prev];
+      const temp = copy[index]!;
+      copy[index] = copy[targetIndex]!;
+      copy[targetIndex] = temp;
+      return copy;
+    });
   }
 
   function marcarTodos(visivel: boolean) {
-    setEstadoCampos((prev) => {
-      const novo: Record<string, boolean> = {};
-      Object.keys(prev).forEach((k) => {
-        novo[k] = visivel;
-      });
-      return novo;
-    });
+    setListaCampos((prev) => prev.map((c) => ({ ...c, visible: visivel })));
   }
 
   function salvar() {
     startTransition(async () => {
-      const fieldsConfig: NewLeadFormFieldConfig[] = [];
-
-      // Mapear campos padrão
-      CAMPOS_PADRAO_DISPONIVEIS.forEach((padrao) => {
-        fieldsConfig.push({
-          key: padrao.key,
-          label: padrao.label,
-          visible: Boolean(estadoCampos[padrao.key]),
-          is_standard: true,
-        });
-      });
-
-      // Mapear campos personalizados
-      camposPersonalizados.forEach((cp) => {
-        fieldsConfig.push({
-          key: cp.key,
-          label: cp.label,
-          visible: Boolean(estadoCampos[cp.key]),
-          is_standard: false,
-        });
-      });
-
       const res = await updatePipelineConfig(pipeline.id, {
         new_lead_form: {
-          fields: fieldsConfig,
+          fields: listaCampos,
         },
       });
 
@@ -147,9 +182,9 @@ export function NewLeadFormSection({ pipeline }: Props) {
       </div>
 
       {aberto && (
-        <div className="mt-4 space-y-5 border-t border-border pt-4">
+        <div className="mt-4 space-y-4 border-t border-border pt-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{t("Marque os campos que deseja exibir no formulário de criação:")}</span>
+            <span>{t("Use as setas para definir a ordem e alterne para exibir ou ocultar:")}</span>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -172,101 +207,87 @@ export function NewLeadFormSection({ pipeline }: Props) {
             </div>
           </div>
 
-          {/* 1. CAMPOS PADRÃO */}
           <div className="space-y-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("Campos Padrão do Sistema")}
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {CAMPOS_PADRAO_DISPONIVEIS.map((campo) => {
-                const ativo = Boolean(estadoCampos[campo.key]);
-                return (
-                  <div
-                    key={campo.key}
-                    onClick={() => alternar(campo.key)}
-                    className={`flex items-start gap-3 rounded-md border p-2.5 transition-colors cursor-pointer select-none ${
-                      ativo
-                        ? "border-accent/50 bg-accent/5"
-                        : "border-border bg-background opacity-60 hover:opacity-100"
-                    }`}
-                  >
-                    <div
-                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                        ativo
-                          ? "border-accent bg-accent text-accent-foreground"
-                          : "border-muted-foreground bg-transparent"
-                      }`}
-                    >
-                      {ativo && <Check size={12} />}
+            {listaCampos.map((campo, idx) => {
+              const ativo = campo.visible;
+              const padrao = CAMPOS_PADRAO_DISPONIVEIS.find((p) => p.key === campo.key);
+              const cp = !campo.is_standard
+                ? camposPersonalizados.find((c) => c.key === campo.key)
+                : null;
+
+              return (
+                <div
+                  key={campo.key}
+                  className={`flex items-center justify-between gap-3 rounded-md border p-2.5 transition-colors ${
+                    ativo
+                      ? "border-accent/40 bg-accent/5"
+                      : "border-border bg-background opacity-60 hover:opacity-100"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    {/* Botões de reordenação */}
+                    <div className="flex flex-col gap-0.5 shrink-0">
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => mover(idx, "cima")}
+                        className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                        title={t("Mover para cima")}
+                      >
+                        <CaretUp size={14} weight="bold" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={idx === listaCampos.length - 1}
+                        onClick={() => mover(idx, "baixo")}
+                        className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                        title={t("Mover para baixo")}
+                      >
+                        <CaretDown size={14} weight="bold" />
+                      </button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-foreground">
+
+                    <span className="text-xs font-mono font-medium text-muted-foreground w-6 text-center shrink-0">
+                      #{idx + 1}
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-foreground truncate">
                           {campo.label}
                         </span>
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          {ativo ? <Eye size={12} className="text-accent" /> : <EyeSlash size={12} />}
-                        </span>
+                        {campo.is_standard ? (
+                          <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                            {t("Padrão")}
+                          </span>
+                        ) : (
+                          <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-accent/20 text-accent">
+                            {cp?.type ?? t("Personalizado")}
+                          </span>
+                        )}
                       </div>
-                      {campo.dica && (
-                        <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                          {campo.dica}
-                        </p>
-                      )}
+                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                        {padrao?.dica ?? `chave: ${campo.key}`}
+                      </p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* 2. CAMPOS PERSONALIZADOS DO FUNIL */}
-          {camposPersonalizados.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {t("Campos Personalizados Deste Funil")} ({camposPersonalizados.length})
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {camposPersonalizados.map((cp) => {
-                  const ativo = Boolean(estadoCampos[cp.key]);
-                  return (
-                    <div
-                      key={cp.key}
-                      onClick={() => alternar(cp.key)}
-                      className={`flex items-start gap-3 rounded-md border p-2.5 transition-colors cursor-pointer select-none ${
-                        ativo
-                          ? "border-accent/50 bg-accent/5"
-                          : "border-border bg-background opacity-60 hover:opacity-100"
-                      }`}
-                    >
-                      <div
-                        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                          ativo
-                            ? "border-accent bg-accent text-accent-foreground"
-                            : "border-muted-foreground bg-transparent"
-                        }`}
-                      >
-                        {ativo && <Check size={12} />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-foreground truncate">
-                            {cp.label}
-                          </span>
-                          <span className="text-[10px] uppercase font-mono px-1 rounded bg-muted text-muted-foreground">
-                            {cp.type}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground font-mono truncate mt-0.5">
-                          chave: {cp.key}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                  <button
+                    type="button"
+                    onClick={() => alternar(campo.key)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium cursor-pointer transition-colors shrink-0 ${
+                      ativo
+                        ? "bg-accent text-accent-foreground shadow-sm"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
+                  >
+                    {ativo ? <Eye size={13} /> : <EyeSlash size={13} />}
+                    <span>{ativo ? t("Visível") : t("Oculto")}</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
 
           <div className="flex justify-end pt-2">
             <Button
