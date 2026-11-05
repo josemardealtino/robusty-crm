@@ -552,7 +552,7 @@ export function NewLeadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={customizandoCampos ? "w-full sm:max-w-2xl md:max-w-3xl max-h-[88vh] overflow-y-auto p-4 sm:p-6" : "w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6"}>
+      <DialogContent className={customizandoCampos ? "w-full sm:max-w-xl md:max-w-2xl max-h-[85vh] overflow-y-auto p-5 sm:p-6" : "w-full sm:max-w-lg md:max-w-xl lg:max-w-[650px] max-h-[88vh] overflow-y-auto p-5 sm:p-6"}>
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>{customizandoCampos ? t("Personalizar campos deste formulário") : t("Novo lead")}</DialogTitle>
@@ -692,8 +692,8 @@ export function NewLeadDialog({
             </DialogFooter>
           </div>
         ) : (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3.5">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3.5 gap-y-3 items-start">
             {camposOrdenados.map((campoConfig) => {
               const isCustom = !campoConfig.is_standard;
               const campoDef = isCustom
@@ -709,7 +709,7 @@ export function NewLeadDialog({
                 case "contact":
                   if (contactId) return null;
                   return (
-                    <div key="contact" className="col-span-1 md:col-span-2 space-y-2">
+                    <div key="contact" className="col-span-1 md:col-span-2 space-y-1.5">
                       <SeletorDeContato escolhido={contato} onEscolher={escolherContato} />
                       {faltaContato && (
                         <p className="text-xs text-muted-foreground">
@@ -721,8 +721,8 @@ export function NewLeadDialog({
 
                 case "title":
                   return (
-                    <div key="title" className="col-span-1 space-y-2">
-                      <Label htmlFor="title">{t("Título")}</Label>
+                    <div key="title" className="col-span-1 md:col-span-2 space-y-1.5">
+                      <Label htmlFor="title" className="text-xs font-medium text-foreground">{t("Título")}</Label>
                       <Input
                         id="title"
                         placeholder={t("Ex: Pedido Maria — combo presente")}
@@ -736,8 +736,8 @@ export function NewLeadDialog({
 
                 case "stage_id":
                   return (
-                    <div key="stage_id" className="col-span-1 space-y-2">
-                      <Label>{t("Etapa")}</Label>
+                    <div key="stage_id" className="col-span-1 space-y-1.5">
+                      <Label className="text-xs font-medium text-foreground">{t("Etapa")}</Label>
                       <Select
                         value={stageId}
                         onValueChange={(v) => form.setValue("stage_id", v)}
@@ -760,11 +760,11 @@ export function NewLeadDialog({
 
                 case "description":
                   return (
-                    <div key="description" className="col-span-1 md:col-span-2 space-y-2">
-                      <Label htmlFor="description">{t("Descrição")}</Label>
+                    <div key="description" className="col-span-1 md:col-span-2 space-y-1.5">
+                      <Label htmlFor="description" className="text-xs font-medium text-foreground">{t("Descrição")}</Label>
                       <Textarea
                         id="description"
-                        rows={3}
+                        rows={2}
                         placeholder={t("Contexto, observações, links…")}
                         {...form.register("description")}
                       />
@@ -773,8 +773,8 @@ export function NewLeadDialog({
 
                 case "value":
                   return (
-                    <div key="value" className="col-span-1 space-y-2">
-                      <Label htmlFor="valueReais">
+                    <div key="value" className="col-span-1 space-y-1.5">
+                      <Label htmlFor="valueReais" className="text-xs font-medium text-foreground">
                         {t("Valor")} ({simboloDaMoeda(moedaDoValor)})
                       </Label>
                       <Input
@@ -794,8 +794,8 @@ export function NewLeadDialog({
 
                 case "expected_close_date":
                   return (
-                    <div key="expected_close_date" className="col-span-1 space-y-2">
-                      <Label htmlFor="expected_close_date">{t("Fechamento previsto")}</Label>
+                    <div key="expected_close_date" className="col-span-1 space-y-1.5">
+                      <Label htmlFor="expected_close_date" className="text-xs font-medium text-foreground">{t("Fechamento previsto")}</Label>
                       <Input
                         id="expected_close_date"
                         type="date"
@@ -807,8 +807,8 @@ export function NewLeadDialog({
                 case "recorrencia":
                   return (
                     <div key="recorrencia" className="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="valorRecorrenteReais">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="valorRecorrenteReais" className="text-xs font-medium text-foreground">
                           {t("Valor recorrente (mensal)")} ({simboloDaMoeda(moedaDoValor)})
                         </Label>
                         <Input
@@ -828,8 +828,8 @@ export function NewLeadDialog({
                           </p>
                         )}
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="recorrenciaMeses">{t("Duração (meses)")}</Label>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="recorrenciaMeses" className="text-xs font-medium text-foreground">{t("Duração (meses)")}</Label>
                         <Input
                           id="recorrenciaMeses"
                           inputMode="numeric"
@@ -847,8 +847,8 @@ export function NewLeadDialog({
 
                 case "tags":
                   return (
-                    <div key="tags" className="col-span-1 md:col-span-2 space-y-2">
-                      <Label htmlFor="tagsRaw">{t("Tags (separadas por vírgula)")}</Label>
+                    <div key="tags" className="col-span-1 md:col-span-2 space-y-1.5">
+                      <Label htmlFor="tagsRaw" className="text-xs font-medium text-foreground">{t("Tags (separadas por vírgula)")}</Label>
                       <Input
                         id="tagsRaw"
                         placeholder="vip, recompra"
@@ -859,7 +859,11 @@ export function NewLeadDialog({
 
                 default:
                   if (campoDef) {
-                    const isFullWidth = campoDef.type === "textarea" || campoDef.type === "file";
+                    const isFullWidth =
+                      campoDef.type === "textarea" ||
+                      campoDef.type === "file" ||
+                      campoDef.type === "multiselect" ||
+                      Boolean(campoDef.multiple);
                     return (
                       <div
                         key={campoConfig.key}
