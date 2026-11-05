@@ -1073,7 +1073,7 @@ export function CRMSidePanel({
               onClick={() => setLeadDialogOpen(true)}
             >
               <Users size={12} className="mr-1" weight="regular" aria-hidden />
-              {leadDialogOpen && defaultPipeline.isLoading ? t("Carregando…") : t("Novo negócio")}
+              {leadDialogOpen && defaultPipeline.isLoading ? t("Carregando…") : t("Novo lead")}
             </Button>
             {contactId && (
               <Button asChild size="sm" variant="ghost" className="h-11 px-2 text-xs lg:h-7">

@@ -552,10 +552,10 @@ export function NewLeadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={customizandoCampos ? "sm:max-w-xl max-h-[85vh] overflow-y-auto" : undefined}>
+      <DialogContent className={customizandoCampos ? "w-full sm:max-w-2xl md:max-w-3xl max-h-[88vh] overflow-y-auto p-4 sm:p-6" : "w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6"}>
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle>{customizandoCampos ? t("Personalizar campos deste formulário") : t("Novo negócio")}</DialogTitle>
+            <DialogTitle>{customizandoCampos ? t("Personalizar campos deste formulário") : t("Novo lead")}</DialogTitle>
             <Button
               type="button"
               variant="outline"
@@ -569,8 +569,8 @@ export function NewLeadDialog({
           </div>
           <DialogDescription>
             {customizandoCampos
-              ? t("Selecione quais campos devem aparecer ao cadastrar um novo negócio neste funil.")
-              : t("Abra um negócio para um contato neste funil.")}
+              ? t("Selecione quais campos devem aparecer ao cadastrar um novo lead neste funil.")
+              : t("Abra um novo lead para um contato neste funil.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -693,185 +693,192 @@ export function NewLeadDialog({
           </div>
         ) : (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {camposOrdenados.map((campoConfig) => {
-            const isCustom = !campoConfig.is_standard;
-            const campoDef = isCustom
-              ? todosCamposPersonalizados.find((c) => c.key === campoConfig.key)
-              : null;
-            const isExigidoPelaEtapa = isCustom && camposExigidos.some((e) => e.key === campoConfig.key);
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3.5">
+            {camposOrdenados.map((campoConfig) => {
+              const isCustom = !campoConfig.is_standard;
+              const campoDef = isCustom
+                ? todosCamposPersonalizados.find((c) => c.key === campoConfig.key)
+                : null;
+              const isExigidoPelaEtapa = isCustom && camposExigidos.some((e) => e.key === campoConfig.key);
 
-            if (!campoConfig.visible && !isExigidoPelaEtapa) {
-              return null;
-            }
+              if (!campoConfig.visible && !isExigidoPelaEtapa) {
+                return null;
+              }
 
-            switch (campoConfig.key) {
-              case "contact":
-                if (contactId) return null;
-                return (
-                  <div key="contact" className="space-y-2">
-                    <SeletorDeContato escolhido={contato} onEscolher={escolherContato} />
-                    {faltaContato && (
-                      <p className="text-xs text-muted-foreground">
-                        {t("Sem contato, este negócio não recebe WhatsApp nem entra nas automações.")}
-                      </p>
-                    )}
-                  </div>
-                );
-
-              case "title":
-                return (
-                  <div key="title" className="space-y-2">
-                    <Label htmlFor="title">{t("Título")}</Label>
-                    <Input
-                      id="title"
-                      placeholder={t("Ex: Pedido Maria — combo presente")}
-                      {...form.register("title", {
-                        required: campoConfig.visible,
-                        minLength: campoConfig.visible ? 2 : 0,
-                      })}
-                    />
-                  </div>
-                );
-
-              case "description":
-                return (
-                  <div key="description" className="space-y-2">
-                    <Label htmlFor="description">{t("Descrição")}</Label>
-                    <Textarea
-                      id="description"
-                      rows={3}
-                      placeholder={t("Contexto, observações, links…")}
-                      {...form.register("description")}
-                    />
-                  </div>
-                );
-
-              case "stage_id":
-                return (
-                  <div key="stage_id" className="space-y-2">
-                    <Label>{t("Etapa")}</Label>
-                    <Select
-                      value={stageId}
-                      onValueChange={(v) => form.setValue("stage_id", v)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={t("Selecione a etapa")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stages
-                          .filter((s) => !s.is_archived)
-                          .map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                );
-
-              case "value":
-                return (
-                  <div key="value" className="space-y-2">
-                    <Label htmlFor="valueReais">
-                      {t("Valor")} ({simboloDaMoeda(moedaDoValor)})
-                    </Label>
-                    <Input
-                      id="valueReais"
-                      inputMode="decimal"
-                      placeholder="0,00"
-                      {...form.register("valueReais")}
-                    />
-                    <EcoDoValor control={form.control} moeda={moedaDoValor} />
-                    {form.formState.errors.valueReais && (
-                      <p className="text-xs text-error-fg">
-                        {form.formState.errors.valueReais.message}
-                      </p>
-                    )}
-                  </div>
-                );
-
-              case "expected_close_date":
-                return (
-                  <div key="expected_close_date" className="space-y-2">
-                    <Label htmlFor="expected_close_date">{t("Fechamento previsto")}</Label>
-                    <Input
-                      id="expected_close_date"
-                      type="date"
-                      {...form.register("expected_close_date")}
-                    />
-                  </div>
-                );
-
-              case "recorrencia":
-                return (
-                  <div key="recorrencia" className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="valorRecorrenteReais">
-                        {t("Valor recorrente (mensal)")} ({simboloDaMoeda(moedaDoValor)})
-                      </Label>
-                      <Input
-                        id="valorRecorrenteReais"
-                        inputMode="decimal"
-                        placeholder="0,00"
-                        {...form.register("valorRecorrenteReais")}
-                      />
-                      <EcoDoValor
-                        control={form.control}
-                        moeda={moedaDoValor}
-                        campo="valorRecorrenteReais"
-                      />
-                      {form.formState.errors.valorRecorrenteReais && (
-                        <p className="text-xs text-error-fg">
-                          {form.formState.errors.valorRecorrenteReais.message}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="recorrenciaMeses">{t("Duração (meses)")}</Label>
-                      <Input
-                        id="recorrenciaMeses"
-                        inputMode="numeric"
-                        placeholder={t("sem prazo")}
-                        {...form.register("recorrenciaMeses")}
-                      />
-                      {form.formState.errors.recorrenciaMeses && (
-                        <p className="text-xs text-error-fg">
-                          {form.formState.errors.recorrenciaMeses.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-
-              case "tags":
-                return (
-                  <div key="tags" className="space-y-2">
-                    <Label htmlFor="tagsRaw">{t("Tags (separadas por vírgula)")}</Label>
-                    <Input
-                      id="tagsRaw"
-                      placeholder="vip, recompra"
-                      {...form.register("tagsRaw")}
-                    />
-                  </div>
-                );
-
-              default:
-                if (campoDef) {
+              switch (campoConfig.key) {
+                case "contact":
+                  if (contactId) return null;
                   return (
-                    <div key={campoConfig.key} className="space-y-1">
-                      <CustomFieldsEditor
-                        fields={[campoDef]}
-                        value={camposDoNegocio}
-                        onChange={setCamposDoNegocio}
-                        mode="lead"
+                    <div key="contact" className="col-span-1 md:col-span-2 space-y-2">
+                      <SeletorDeContato escolhido={contato} onEscolher={escolherContato} />
+                      {faltaContato && (
+                        <p className="text-xs text-muted-foreground">
+                          {t("Sem contato, este lead não recebe WhatsApp nem entra nas automações.")}
+                        </p>
+                      )}
+                    </div>
+                  );
+
+                case "title":
+                  return (
+                    <div key="title" className="col-span-1 space-y-2">
+                      <Label htmlFor="title">{t("Título")}</Label>
+                      <Input
+                        id="title"
+                        placeholder={t("Ex: Pedido Maria — combo presente")}
+                        {...form.register("title", {
+                          required: campoConfig.visible,
+                          minLength: campoConfig.visible ? 2 : 0,
+                        })}
                       />
                     </div>
                   );
-                }
-                return null;
-            }
-          })}
+
+                case "stage_id":
+                  return (
+                    <div key="stage_id" className="col-span-1 space-y-2">
+                      <Label>{t("Etapa")}</Label>
+                      <Select
+                        value={stageId}
+                        onValueChange={(v) => form.setValue("stage_id", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t("Selecione a etapa")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {stages
+                            .filter((s) => !s.is_archived)
+                            .map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+
+                case "description":
+                  return (
+                    <div key="description" className="col-span-1 md:col-span-2 space-y-2">
+                      <Label htmlFor="description">{t("Descrição")}</Label>
+                      <Textarea
+                        id="description"
+                        rows={3}
+                        placeholder={t("Contexto, observações, links…")}
+                        {...form.register("description")}
+                      />
+                    </div>
+                  );
+
+                case "value":
+                  return (
+                    <div key="value" className="col-span-1 space-y-2">
+                      <Label htmlFor="valueReais">
+                        {t("Valor")} ({simboloDaMoeda(moedaDoValor)})
+                      </Label>
+                      <Input
+                        id="valueReais"
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        {...form.register("valueReais")}
+                      />
+                      <EcoDoValor control={form.control} moeda={moedaDoValor} />
+                      {form.formState.errors.valueReais && (
+                        <p className="text-xs text-error-fg">
+                          {form.formState.errors.valueReais.message}
+                        </p>
+                      )}
+                    </div>
+                  );
+
+                case "expected_close_date":
+                  return (
+                    <div key="expected_close_date" className="col-span-1 space-y-2">
+                      <Label htmlFor="expected_close_date">{t("Fechamento previsto")}</Label>
+                      <Input
+                        id="expected_close_date"
+                        type="date"
+                        {...form.register("expected_close_date")}
+                      />
+                    </div>
+                  );
+
+                case "recorrencia":
+                  return (
+                    <div key="recorrencia" className="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="valorRecorrenteReais">
+                          {t("Valor recorrente (mensal)")} ({simboloDaMoeda(moedaDoValor)})
+                        </Label>
+                        <Input
+                          id="valorRecorrenteReais"
+                          inputMode="decimal"
+                          placeholder="0,00"
+                          {...form.register("valorRecorrenteReais")}
+                        />
+                        <EcoDoValor
+                          control={form.control}
+                          moeda={moedaDoValor}
+                          campo="valorRecorrenteReais"
+                        />
+                        {form.formState.errors.valorRecorrenteReais && (
+                          <p className="text-xs text-error-fg">
+                            {form.formState.errors.valorRecorrenteReais.message}
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="recorrenciaMeses">{t("Duração (meses)")}</Label>
+                        <Input
+                          id="recorrenciaMeses"
+                          inputMode="numeric"
+                          placeholder={t("sem prazo")}
+                          {...form.register("recorrenciaMeses")}
+                        />
+                        {form.formState.errors.recorrenciaMeses && (
+                          <p className="text-xs text-error-fg">
+                            {form.formState.errors.recorrenciaMeses.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+
+                case "tags":
+                  return (
+                    <div key="tags" className="col-span-1 md:col-span-2 space-y-2">
+                      <Label htmlFor="tagsRaw">{t("Tags (separadas por vírgula)")}</Label>
+                      <Input
+                        id="tagsRaw"
+                        placeholder="vip, recompra"
+                        {...form.register("tagsRaw")}
+                      />
+                    </div>
+                  );
+
+                default:
+                  if (campoDef) {
+                    const isFullWidth = campoDef.type === "textarea" || campoDef.type === "file";
+                    return (
+                      <div
+                        key={campoConfig.key}
+                        className={`${isFullWidth ? "col-span-1 md:col-span-2" : "col-span-1"} space-y-1.5`}
+                      >
+                        <CustomFieldsEditor
+                          fields={[campoDef]}
+                          value={camposDoNegocio}
+                          onChange={setCamposDoNegocio}
+                          mode="lead"
+                          className="space-y-0"
+                        />
+                      </div>
+                    );
+                  }
+                  return null;
+              }
+            })}
+          </div>
 
           {faltandoNaEtapa.length > 0 && (
             <p role="alert" className="text-xs text-error-fg">
@@ -892,7 +899,7 @@ export function NewLeadDialog({
               className="rounded-md border border-amber-300 bg-amber-100 p-3 text-sm text-amber-950"
             >
               <p className="font-medium">
-                {t("Este contato já tem um negócio aberto neste funil.")}
+                {t("Este contato já tem um lead aberto neste funil.")}
               </p>
               <p className="mt-1">{t("Abrir mesmo assim?")}</p>
               {/* O link é o próprio título do negócio — dado do banco, não
@@ -940,7 +947,7 @@ export function NewLeadDialog({
               {t("Salvar e iniciar conversa")}
             </Button>
             <Button type="submit" disabled={create.isPending || !stageId}>
-              {create.isPending ? t("Criando…") : t("Criar negócio")}
+              {create.isPending ? t("Criando…") : t("Criar lead")}
             </Button>
           </DialogFooter>
         </form>

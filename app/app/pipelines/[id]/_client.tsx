@@ -441,7 +441,7 @@ export function PipelinePageClient({
               disabled={etapasIniciais.length === 0}
               className="shrink-0"
             >
-              <Plus size={16} className="mr-2" /> {t("Novo negócio")}
+              <Plus size={16} className="mr-2" /> {t("Novo lead")}
             </Button>
           )}
         </div>
