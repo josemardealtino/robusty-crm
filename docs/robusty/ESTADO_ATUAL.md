@@ -49,7 +49,8 @@
 | **Validações por Etapa / Ganho / Perda** | **Existe nativamente** | Implementado via `obrigatorio_em` em `lib/leads/campos-exigidos.ts`. |
 | **Múltipla escolha nativa** | **Existe nativamente** | Implementado via `searchable_select` com `multiple: true`. |
 | **ID Comercial Único (ex: `ROB-2026-000001`)** | **Implementado e ativo** | Gerado automaticamente e de forma atômica no banco Postgres via trigger `trg_generate_lead_commercial_id` com sequence `seq_crm_leads_commercial_id`. Exibido no card do Kanban, no perfil do lead (com botão de cópia rápida) e suportado na busca do funil. |
-| **Conversão Leads -> Pedidos** | **Backlog futuro** | Conforme especificado, a conversão manual/automática com cópia de campos entre os dois funis fica para a próxima fase. |
+| **Conversão Leads -> Pedidos** | **Implementado e ativo** | Botão **Criar pedido** no dossiê do lead (`LeadDossier.tsx` + `createOrderFromLead.ts`). Preserva o mesmo `commercial_id` (`ROB-2026-XXXXXX`), copia 100% dos campos preenchidos, mapeia os campos operacionais e garante idempotência no banco (`uniq_crm_leads_org_pipeline_commercial_id`) e na aplicação. |
+| **Persistência de Campos entre Etapas e Funis** | **Implementado e ativo** | `mesclarCamposDoPerfil` (`lib/leads/campos-do-perfil.ts`) garante que qualquer campo já preenchido permaneça visível e editável no perfil do lead/pedido independentemente da etapa ou do funil. |
 
 ---
 

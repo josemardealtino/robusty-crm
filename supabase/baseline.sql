@@ -71144,3 +71144,13 @@ drop trigger if exists trg_generate_lead_commercial_id on public.crm_leads;
 create trigger trg_generate_lead_commercial_id
   before insert on public.crm_leads
   for each row execute function public.fn_generate_lead_commercial_id();
+
+
+-- ============================================================================
+-- 9085 — UNICIDADE DE COMMERCIAL_ID POR FUNIL (PRESERVAÇÃO LEAD -> PEDIDO)
+-- ============================================================================
+drop index if exists public.uniq_crm_leads_org_commercial_id;
+
+create unique index if not exists uniq_crm_leads_org_pipeline_commercial_id
+  on public.crm_leads (organization_id, pipeline_id, commercial_id)
+  where commercial_id is not null;

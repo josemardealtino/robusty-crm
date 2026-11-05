@@ -3,8 +3,10 @@
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Copy } from "@/lib/ui/icons";
+import { ArrowRight, CheckCircle, CircleNotch, Copy, ShoppingCart } from "@/lib/ui/icons";
 
+import { createOrderFromLead } from "@/app/actions/leads/createOrderFromLead";
+import { Button } from "@/components/ui/button";
 import { useT } from "@/hooks/i18n/useT";
 import { useActiveOrg, usePermission, useUser } from "@/hooks/auth/AuthProvider";
 import { ROLE_RANK } from "@/lib/auth/types";
@@ -158,6 +160,94 @@ export function LeadDossier({
   // ainda aparece — ler o que a IA leu é informação —, mas sem os botões.
   const podeConfirmarDoDocumento = podeEditarTarefas;
 
+  const leadOrigemId =
+    typeof lead.custom_fields?.lead_origem_id === "string"
+      ? lead.custom_fields.lead_origem_id
+      : null;
+  const pipelineOrigemId =
+    typeof lead.custom_fields?.pipeline_origem_id === "string"
+      ? lead.custom_fields.pipeline_origem_id
+      : null;
+  const pedidoGeradoInicial =
+    typeof lead.custom_fields?.pedido_gerado_id === "string"
+      ? lead.custom_fields.pedido_gerado_id
+      : null;
+  const pedidoPipelineInicial =
+    typeof lead.custom_fields?.pedido_pipeline_id === "string"
+      ? lead.custom_fields.pedido_pipeline_id
+      : null;
+
+  const [criandoPedido, setCriandoPedido] = useState(false);
+  const [pedidoGerado, setPedidoGerado] = useState<{
+    orderId: string;
+    pipelineId: string;
+    commercialId: string | null;
+  } | null>(
+    pedidoGeradoInicial && pedidoPipelineInicial
+      ? {
+          orderId: pedidoGeradoInicial,
+          pipelineId: pedidoPipelineInicial,
+          commercialId: lead.commercial_id ?? null,
+        }
+      : null,
+  );
+
+  useEffect(() => {
+    const idGerado =
+      typeof lead.custom_fields?.pedido_gerado_id === "string"
+        ? lead.custom_fields.pedido_gerado_id
+        : null;
+    const pipGerado =
+      typeof lead.custom_fields?.pedido_pipeline_id === "string"
+        ? lead.custom_fields.pedido_pipeline_id
+        : null;
+    setPedidoGerado(
+      idGerado && pipGerado
+        ? {
+            orderId: idGerado,
+            pipelineId: pipGerado,
+            commercialId: lead.commercial_id ?? null,
+          }
+        : null,
+    );
+  }, [lead.id, lead.commercial_id, lead.custom_fields]);
+
+  async function handleCriarPedido() {
+    if (criandoPedido) return;
+    setCriandoPedido(true);
+    try {
+      const rascunho = formulario.current?.obterRascunhoAtual?.();
+      const res = await createOrderFromLead({
+        leadId: lead.id,
+        currentDraft: rascunho,
+      });
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      setPedidoGerado({
+        orderId: res.orderId,
+        pipelineId: res.pipelineId,
+        commercialId: res.commercialId,
+      });
+      if (res.alreadyExists) {
+        toast.success(
+          t("Pedido existente atualizado com os dados atuais") +
+            (res.commercialId ? ` (${res.commercialId})` : ""),
+        );
+      } else {
+        toast.success(
+          t("Pedido criado no funil de Pedidos") +
+            (res.commercialId ? ` (${res.commercialId})` : ""),
+        );
+      }
+    } catch {
+      toast.error(t("Não foi possível criar o pedido."));
+    } finally {
+      setCriandoPedido(false);
+    }
+  }
+
   /**
    * As props da linha do tempo, montadas UMA vez e usadas nos dois estados da
    * seção. Duplicar o bloco seria a maneira mais fácil de os dois divergirem —
@@ -271,6 +361,87 @@ export function LeadDossier({
             {new Date(score.at).toLocaleString(tagDoIdioma)}
           </p>
         )}
+
+        {/* Conversão Lead → Pedido: preserva todos os campos preenchidos e o commercial_id (ROB-YYYY-XXXXXX) */}
+        {leadOrigemId ? (
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-accent/25 bg-accent/5 px-3 py-2 text-xs">
+            <div className="flex items-center gap-2 text-text">
+              <ShoppingCart size={15} className="shrink-0 text-accent" />
+              <span>
+                {t("Pedido originado do lead")}{" "}
+                {lead.commercial_id && (
+                  <strong className="font-mono text-accent">{lead.commercial_id}</strong>
+                )}
+              </span>
+            </div>
+            {pipelineOrigemId && (
+              <a
+                href={`/app/pipelines/${pipelineOrigemId}?lead=${leadOrigemId}`}
+                className="inline-flex items-center gap-1 font-medium text-accent hover:underline"
+              >
+                <span>{t("Ver lead de origem")}</span>
+                <ArrowRight size={12} />
+              </a>
+            )}
+          </div>
+        ) : pedidoGerado ? (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs">
+            <div className="flex items-center gap-2 text-text">
+              <CheckCircle size={15} className="shrink-0 text-emerald-500" />
+              <span>
+                {t("Pedido gerado")}{" "}
+                {pedidoGerado.commercialId && (
+                  <strong className="font-mono">{pedidoGerado.commercialId}</strong>
+                )}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void handleCriarPedido()}
+                disabled={criandoPedido}
+                className="text-text-muted underline-offset-2 hover:text-text hover:underline disabled:opacity-50"
+              >
+                {criandoPedido ? t("Sincronizando…") : t("Sincronizar dados")}
+              </button>
+              <a
+                href={`/app/pipelines/${pedidoGerado.pipelineId}?lead=${pedidoGerado.orderId}`}
+                className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 font-medium text-white hover:bg-emerald-500"
+              >
+                <span>{t("Abrir pedido")}</span>
+                <ArrowRight size={12} />
+              </a>
+            </div>
+          </div>
+        ) : podeEditarTarefas ? (
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs">
+            <div className="flex flex-col gap-0.5">
+              <span className="font-medium text-text">{t("Converter em pedido")}</span>
+              <span className="text-[11px] text-text-muted">
+                {t("Leva todos os campos preenchidos e preserva o ID comercial")}
+              </span>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void handleCriarPedido()}
+              disabled={criandoPedido}
+              className="shrink-0 gap-1.5"
+            >
+              {criandoPedido ? (
+                <>
+                  <CircleNotch size={14} className="animate-spin" />
+                  <span>{t("Criando…")}</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingCart size={14} />
+                  <span>{t("Criar pedido")}</span>
+                </>
+              )}
+            </Button>
+          </div>
+        ) : null}
 
         {/* OS ATALHOS DO CARD (#3487) — logo abaixo do cabeçalho, ANTES de
             tudo que rola. A entrega inteira existe para o atendente não sair do

@@ -2,7 +2,7 @@
 
 import { useActiveOrg } from "@/hooks/auth/AuthProvider";
 import { useT } from "@/hooks/i18n/useT";
-import { useEffect, useImperativeHandle, useState, type Ref } from "react";
+import { useEffect, useImperativeHandle, useMemo, useState, type Ref } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -14,6 +14,7 @@ import { useEditLead } from "@/hooks/kanban/useUpdateLead";
 import type { Lead } from "@/lib/types/leads";
 import { updateLeadSchema, type UpdateLeadInput } from "@/lib/schemas/leads";
 import { MOEDA_PADRAO, parseReaisToCents, simboloDaMoeda } from "@/lib/money";
+import { mesclarCamposDoPerfil } from "@/lib/leads/campos-do-perfil";
 import { soChavesAlteradas } from "@/lib/leads/custom-fields-so-diff";
 import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import { ContactTagsEditor } from "@/components/inbox/ContactTagsEditor";
@@ -38,8 +39,20 @@ interface FormShape {
   expected_close_date: string;
 }
 
+export interface RascunhoDosCamposDoNegocio {
+  title: string;
+  description: string | null;
+  value_cents: number | null;
+  recurring_value_cents: number | null;
+  recurring_period: string | null;
+  recurring_months: number | null;
+  expected_close_date: string | null;
+  custom_fields: Record<string, unknown>;
+}
+
 export interface ControleDosCamposDoNegocio {
   confirmarCampo: (confirmado: CampoConfirmadoDoDocumento) => void;
+  obterRascunhoAtual?: () => RascunhoDosCamposDoNegocio;
 }
 
 interface Props {
@@ -113,6 +126,11 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id]);
 
+  const camposDoPerfil = useMemo(
+    () => mesclarCamposDoPerfil(fieldDefs, customFields),
+    [fieldDefs, customFields],
+  );
+
   useImperativeHandle(controle, () => ({
     confirmarCampo(confirmacao) {
       // A confirmação pode terminar depois de a pessoa abrir outro card.
@@ -123,7 +141,33 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
       setCustomFields((atuais) => ({ ...atuais, [campo]: valor }));
       setCamposCarregados((atuais) => ({ ...atuais, [campo]: valor }));
     },
-  }), [lead.id]);
+    obterRascunhoAtual() {
+      const vals = form.getValues();
+      const reais = vals.valueReais.trim();
+      const valueCents = reais.length > 0 ? parseReaisToCents(reais, moedaDoValor) : null;
+      const apagouAMensalidade =
+        lead.recurring_value_cents != null && vals.valorRecorrenteReais.trim() === "";
+      const leitura = lerRecorrenciaDoFormulario(
+        vals.valorRecorrenteReais,
+        apagouAMensalidade ? "" : vals.recorrenciaMeses,
+        moedaDoValor,
+      );
+      return {
+        title: vals.title.trim() || lead.title,
+        description: vals.description.trim() ? vals.description.trim() : null,
+        value_cents: valueCents,
+        ...(leitura.ok
+          ? leitura.trio
+          : {
+              recurring_value_cents: lead.recurring_value_cents ?? null,
+              recurring_period: lead.recurring_period === "monthly" ? ("monthly" as const) : null,
+              recurring_months: lead.recurring_months ?? null,
+            }),
+        expected_close_date: vals.expected_close_date || null,
+        custom_fields: { ...customFields },
+      };
+    },
+  }), [lead.id, lead.title, lead.recurring_value_cents, lead.recurring_period, lead.recurring_months, form, moedaDoValor, customFields]);
 
   async function onSubmit(values: FormShape) {
     const reais = values.valueReais.trim();
@@ -170,7 +214,7 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
       ...leitura.trio,
       expected_close_date: values.expected_close_date || null,
       // Só o que a pessoa alterou (issue #2132) — o merge continua do servidor.
-      ...(fieldDefs.length > 0
+      ...(camposDoPerfil.length > 0
         ? { custom_fields: soChavesAlteradas(camposCarregados, customFields) }
         : {}),
     };
@@ -308,11 +352,11 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
           />
         </div>
 
-        {fieldDefs.length > 0 && (
+        {camposDoPerfil.length > 0 && (
           <div className="space-y-2 border-t border-border pt-4">
             <p className="text-sm font-medium">{t("Campos do funil")}</p>
             <CustomFieldsEditor
-              fields={fieldDefs}
+              fields={camposDoPerfil}
               value={customFields}
               onChange={setCustomFields}
               mode="lead"
