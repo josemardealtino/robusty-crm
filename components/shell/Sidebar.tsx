@@ -62,7 +62,11 @@ export function SidebarContent({
   // 1280x768, ele caía fora da dobra mesmo em telas de 1080px.
   const grupos = todos.filter((g) => g.group.id !== GRUPO_NO_RODAPE);
   const grupoDoRodape = todos.find((g) => g.group.id === GRUPO_NO_RODAPE);
-  const rodape = grupoDoRodape?.group.hub;
+  const destinosEscolhidos = activeOrg?.interface_settings?.destinos;
+  const temDestinosPersonalizados = Array.isArray(destinosEscolhidos);
+  const podeVerConfiguracoesNoRodape =
+    !temDestinosPersonalizados || Boolean(destinosEscolhidos?.includes("/app/settings/tenant"));
+  const rodape = podeVerConfiguracoesNoRodape ? grupoDoRodape?.group.hub : undefined;
   /**
    * "Ajuda" é o ÚLTIMO item do rodapé fixo (issue #3567), e chega por `href` em
    * vez de uma segunda lista escrita aqui: a entrada vive no `NAV_CATALOG` com
@@ -392,7 +396,7 @@ export function SidebarContent({
                       </li>
                     );
                   })}
-                  {group.hub && (
+                  {group.hub && !temDestinosPersonalizados && (
                     <li>
                       <Link
                         href={group.hub.href}
