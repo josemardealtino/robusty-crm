@@ -126,7 +126,7 @@ describe("Perfis de acesso e visualização da equipe Robusty", () => {
     expect(screen.getByRole("link", { name: /Ajuda/ })).toHaveAttribute("href", "/app/ajuda");
   });
 
-  it("João Ricardo / Dono (josemardealtino@gmail.com) vê Atendimento, CRM, IA e Canais, sem Análise, Configurações ou Ajuda", () => {
+  it("João Ricardo / Dono (joaoricardo@grupomixfer.com.br) vê Atendimento, CRM, IA e Canais, sem Análise, Configurações ou Ajuda", () => {
     configurarPerfil("joao_ricardo");
     render(<Sidebar collapsed={false} />);
 

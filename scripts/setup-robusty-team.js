@@ -33,7 +33,8 @@ const PERFIS = {
     },
   },
   joao_ricardo: {
-    email: "josemardealtino@gmail.com",
+    email: "joaoricardo@grupomixfer.com.br",
+    legacyEmails: ["josemardealtino@gmail.com"],
     fullName: "João Ricardo",
     role: "admin",
     isPlatformAdmin: false,
@@ -133,7 +134,12 @@ async function run() {
 
   for (const [key, cfg] of Object.entries(PERFIS)) {
     const emailLower = cfg.email.toLowerCase();
-    let authUser = existingUsers.find((u) => (u.email || "").toLowerCase() === emailLower);
+    const legacyLower = (cfg.legacyEmails || []).map((e) => e.toLowerCase());
+    let authUser = existingUsers.find(
+      (u) =>
+        (u.email || "").toLowerCase() === emailLower ||
+        legacyLower.includes((u.email || "").toLowerCase()),
+    );
 
     if (!authUser) {
       console.log(`\nCriando usuário no Auth: ${cfg.email} (${cfg.fullName})...`);
@@ -152,8 +158,9 @@ async function run() {
       authUser = created.user;
       console.log(` -> Criado com ID: ${authUser.id}`);
     } else {
-      console.log(`\nAtualizando usuário existente no Auth: ${cfg.email} (${authUser.id})...`);
+      console.log(`\nAtualizando usuário existente no Auth: ${authUser.email} -> ${cfg.email} (${authUser.id})...`);
       const updatePayload = {
+        email: cfg.email,
         email_confirm: true,
         user_metadata: {
           ...(authUser.user_metadata || {}),
