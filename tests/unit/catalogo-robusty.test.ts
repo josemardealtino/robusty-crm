@@ -24,7 +24,7 @@ describe("Catálogo Oficial Robusty — Filtragem em Cascata e Cálculo de Preç
   });
 
   it("Retorna apenas acessórios compatíveis com Kombi com rótulos limpos", () => {
-    const acessoriosKombi = obterAcessoriosPorVeiculo("kombi");
+    const acessoriosKombi = obterAcessoriosPorVeiculo("kombi", "mx_100");
     const values = acessoriosKombi.map((a) => a.value);
 
     expect(values).toContain("escada");
@@ -34,6 +34,35 @@ describe("Catálogo Oficial Robusty — Filtragem em Cascata e Cálculo de Preç
     // Não deve conter acessórios exclusivos de outros veículos
     expect(values).not.toContain("guia_rolete");
     expect(values).not.toContain("suporte_escada_rolete");
+  });
+
+  it("Filtra decks de madeira da Kombi estritamente de acordo com o modelo do bagageiro", () => {
+    // Quando seleciona MX 100: deve mostrar deck_completo e meio_deck, mas NÃO deck_mx80 nem deck_mx50
+    const acessoriosMx100 = obterAcessoriosPorVeiculo("kombi", "mx_100").map((a) => a.value);
+    expect(acessoriosMx100).toContain("deck_completo");
+    expect(acessoriosMx100).toContain("meio_deck");
+    expect(acessoriosMx100).not.toContain("deck_mx80");
+    expect(acessoriosMx100).not.toContain("deck_mx50");
+    expect(acessoriosMx100).toContain("escada"); // universal
+
+    // Quando seleciona MX 80 Plus: deve mostrar deck_mx80, mas NÃO deck_completo nem deck_mx50
+    const acessoriosMx80 = obterAcessoriosPorVeiculo("kombi", "mx_80_plus").map((a) => a.value);
+    expect(acessoriosMx80).toContain("deck_mx80");
+    expect(acessoriosMx80).not.toContain("deck_completo");
+    expect(acessoriosMx80).not.toContain("meio_deck");
+    expect(acessoriosMx80).not.toContain("deck_mx50");
+
+    // Quando seleciona MX 50 Plus: deve mostrar deck_mx50
+    const acessoriosMx50 = obterAcessoriosPorVeiculo("kombi", "mx_50_plus").map((a) => a.value);
+    expect(acessoriosMx50).toContain("deck_mx50");
+    expect(acessoriosMx50).not.toContain("deck_completo");
+    expect(acessoriosMx50).not.toContain("deck_mx80");
+
+    // Sem modelo selecionado: não polui a lista com decks específicos
+    const acessoriosSemModelo = obterAcessoriosPorVeiculo("kombi", null).map((a) => a.value);
+    expect(acessoriosSemModelo).not.toContain("deck_completo");
+    expect(acessoriosSemModelo).not.toContain("deck_mx80");
+    expect(acessoriosSemModelo).toContain("escada");
   });
 
   it("Retorna modelos e acessórios exclusivos da Saveiro", () => {

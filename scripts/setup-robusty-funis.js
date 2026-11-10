@@ -184,37 +184,6 @@ async function main() {
   // Campos Customizados de Leads
   const leadsFieldsDef = [
     {
-      key: 'produto',
-      label: 'Produto',
-      type: 'select',
-      options: [
-        { value: 'bagageiro', label: 'Bagageiro' },
-        { value: 'escada', label: 'Escada' },
-        { value: 'deck_meio_deck', label: 'Deck / Meio deck' },
-        { value: 'suporte', label: 'Suporte' },
-        { value: 'fixacao_ventosas', label: 'Fixação / Ventosas' },
-        { value: 'outros_acessorios', label: 'Outros acessórios' },
-        { value: 'servico', label: 'Serviço' },
-        { value: 'a_definir', label: 'A definir' }
-      ],
-      obrigatorio_em: orcamentoEnviadoStageId ? { etapas: [orcamentoEnviadoStageId] } : undefined
-    },
-    {
-      key: 'tipo_de_acessorio',
-      label: 'Tipo de acessório',
-      type: 'select',
-      options: [
-        { value: 'escada', label: 'Escada' },
-        { value: 'deck', label: 'Deck de madeira' },
-        { value: 'suporte_estepe', label: 'Suporte de estepe' },
-        { value: 'base_toldo', label: 'Base de toldo' },
-        { value: 'ventosas_hastes', label: 'Ventosas e hastes de fixação' },
-        { value: 'guia_rolete', label: 'Guia de rolete' },
-        { value: 'outro', label: 'Outro acessório' }
-      ],
-      mostrar_quando: { campo: 'produto', operador: 'igual', valor: 'outros_acessorios' }
-    },
-    {
       key: 'veiculo',
       label: 'Veículo',
       type: 'searchable_select',
@@ -238,6 +207,22 @@ async function main() {
       key: 'ano_versao',
       label: 'Ano / versão',
       type: 'text'
+    },
+    {
+      key: 'produto',
+      label: 'Produto',
+      type: 'select',
+      options: [
+        { value: 'bagageiro', label: 'Bagageiro' },
+        { value: 'escada', label: 'Escada' },
+        { value: 'deck_meio_deck', label: 'Deck / Meio deck' },
+        { value: 'suporte', label: 'Suporte' },
+        { value: 'fixacao_ventosas', label: 'Fixação / Ventosas' },
+        { value: 'outros_acessorios', label: 'Outros acessórios' },
+        { value: 'servico', label: 'Serviço' },
+        { value: 'a_definir', label: 'A definir' }
+      ],
+      obrigatorio_em: orcamentoEnviadoStageId ? { etapas: [orcamentoEnviadoStageId] } : undefined
     },
     {
       key: 'modelo_bagageiro',
@@ -266,6 +251,21 @@ async function main() {
         { value: 'outro_a_definir', label: 'Outro / A definir' }
       ],
       mostrar_quando: { campo: 'produto', operador: 'igual', valor: 'bagageiro' }
+    },
+    {
+      key: 'tipo_de_acessorio',
+      label: 'Tipo de acessório',
+      type: 'select',
+      options: [
+        { value: 'escada', label: 'Escada' },
+        { value: 'deck', label: 'Deck de madeira' },
+        { value: 'suporte_estepe', label: 'Suporte de estepe' },
+        { value: 'base_toldo', label: 'Base de toldo' },
+        { value: 'ventosas_hastes', label: 'Ventosas e hastes de fixação' },
+        { value: 'guia_rolete', label: 'Guia de rolete' },
+        { value: 'outro', label: 'Outro acessório' }
+      ],
+      mostrar_quando: { campo: 'produto', operador: 'igual', valor: 'outros_acessorios' }
     },
     {
       key: 'acessorios_adicionais',
@@ -424,11 +424,39 @@ async function main() {
     'Outros'
   ];
 
+  const leadsNewLeadForm = {
+    fields: [
+      { key: 'contact', label: 'Contato / Cliente', visible: true, is_standard: true },
+      { key: 'title', label: 'Título do Negócio', visible: true, is_standard: true },
+      { key: 'description', label: 'Observações / Descrição', visible: true, is_standard: true },
+      { key: 'stage_id', label: 'Etapa Inicial', visible: true, is_standard: true },
+      { key: 'value', label: 'Valor da Venda', visible: false, is_standard: true },
+      { key: 'expected_close_date', label: 'Previsão de Fechamento', visible: false, is_standard: true },
+      { key: 'recorrencia', label: 'Mensalidade / Recorrência', visible: false, is_standard: true },
+      { key: 'tags', label: 'Tags', visible: false, is_standard: true },
+      { key: 'veiculo', label: 'Veículo', visible: true, is_standard: false },
+      { key: 'ano_versao', label: 'Ano / versão', visible: true, is_standard: false },
+      { key: 'produto', label: 'Produto', visible: true, is_standard: false },
+      { key: 'modelo_bagageiro', label: 'Modelo do bagageiro', visible: true, is_standard: false },
+      { key: 'tipo_de_acessorio', label: 'Tipo de acessório', visible: true, is_standard: false },
+      { key: 'acessorios_adicionais', label: 'Acessórios adicionais', visible: true, is_standard: false },
+      { key: 'detalhes_da_necessidade', label: 'Detalhes da necessidade', visible: false, is_standard: false },
+      { key: 'modalidade_pretendida', label: 'Modalidade pretendida', visible: false, is_standard: false },
+      { key: 'cep', label: 'CEP', visible: false, is_standard: false },
+      { key: 'tipo_precificacao', label: 'Tipo de precificação', visible: false, is_standard: false },
+      { key: 'status_cotacao', label: 'Status da cotação', visible: false, is_standard: false },
+      { key: 'valor_frete', label: 'Valor do frete', visible: false, is_standard: false },
+      { key: 'forma_pagamento', label: 'Forma de pagamento', visible: false, is_standard: false },
+      { key: 'status_pagamento', label: 'Status do pagamento', visible: false, is_standard: false }
+    ]
+  };
+
   // Atualizar settings de Leads
   const leadsSettings = {
     ...(leadsPipeline.settings || {}),
     fields: leadsFieldsDef,
-    lost_reasons: leadsLostReasons
+    lost_reasons: leadsLostReasons,
+    new_lead_form: leadsNewLeadForm
   };
 
   const { error: errUpdLeadsSet } = await sb.from('crm_pipelines')

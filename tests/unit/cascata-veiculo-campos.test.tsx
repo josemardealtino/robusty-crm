@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
@@ -87,5 +87,31 @@ describe("Campos em Cascata por Veículo e Resumo Financeiro (Robusty)", () => {
     expect(screen.getByText(/Instalação Presencial/)).toBeInTheDocument();
     // Total R$ 3.420,00
     expect(screen.getByText("R$ 3.420,00")).toBeInTheDocument();
+  });
+
+  it("Abre a lista suspensa ao clicar no campo de busca mesmo se já estiver focado", () => {
+    const value = {
+      veiculo: "kombi",
+      modelo_bagageiro: "mx_100",
+      acessorios_adicionais: ["escada"],
+    };
+
+    render(
+      <CustomFieldsEditor
+        fields={CAMPOS_TESTE}
+        value={value}
+        onChange={vi.fn()}
+        mode="lead"
+      />,
+    );
+
+    const inputAcessorios = screen.getByPlaceholderText("Digite para buscar e acrescentar…");
+    expect(inputAcessorios).toHaveAttribute("aria-expanded", "false");
+
+    // Ao clicar no input, deve abrir a lista (aria-expanded true)
+    act(() => {
+      fireEvent.click(inputAcessorios);
+    });
+    expect(inputAcessorios).toHaveAttribute("aria-expanded", "true");
   });
 });

@@ -117,8 +117,9 @@ function obterOpcoesDoCampo(
   }
   if (f.key === "acessorios_adicionais") {
     const veiculo = typeof value.veiculo === "string" ? value.veiculo : null;
+    const modelo = typeof value.modelo_bagageiro === "string" ? value.modelo_bagageiro : null;
     if (veiculo) {
-      const acessorios = obterAcessoriosPorVeiculo(veiculo);
+      const acessorios = obterAcessoriosPorVeiculo(veiculo, modelo);
       return acessorios.map((a) => ({
         value: a.value,
         label: `${a.label}${a.price_cents > 0 ? ` — R$ ${(a.price_cents / 100).toFixed(2).replace(".", ",")}` : ""}`,
@@ -178,13 +179,28 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
         if (next.modelo_bagageiro && !modelosValidos.includes(next.modelo_bagageiro as string)) {
           next.modelo_bagageiro = "";
         }
-        // Filtrar acessórios mantendo apenas os compatíveis com o novo veículo
-        const acessoriosValidos = obterAcessoriosPorVeiculo(v).map((a) => a.value);
+        // Filtrar acessórios mantendo apenas os compatíveis com o novo veículo e modelo
+        const acessoriosValidos = obterAcessoriosPorVeiculo(
+          v,
+          typeof next.modelo_bagageiro === "string" ? next.modelo_bagageiro : null,
+        ).map((a) => a.value);
         if (Array.isArray(next.acessorios_adicionais)) {
           next.acessorios_adicionais = (next.acessorios_adicionais as string[]).filter((a) =>
             acessoriosValidos.includes(a),
           );
         }
+      }
+      onChange(next);
+      return;
+    }
+    if (key === "modelo_bagageiro" && typeof v === "string") {
+      const next: Record<string, unknown> = { ...value, [key]: v };
+      const veiculo = typeof value.veiculo === "string" ? value.veiculo : null;
+      if (veiculo && Array.isArray(next.acessorios_adicionais)) {
+        const acessoriosValidos = obterAcessoriosPorVeiculo(veiculo, v).map((a) => a.value);
+        next.acessorios_adicionais = (next.acessorios_adicionais as string[]).filter((a) =>
+          acessoriosValidos.includes(a),
+        );
       }
       onChange(next);
       return;
@@ -517,6 +533,10 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
                       multiplo ? t("Digite para buscar e acrescentar…") : t("Digite para buscar…")
                     }
                     value={rascunho ?? (multiplo ? "" : rotuloAtual)}
+                    onClick={() => {
+                      setBuscaAberta(f.key);
+                      setDestacado(-1);
+                    }}
                     onFocus={() => {
                       setBuscaAberta(f.key);
                       setDestacado(-1);

@@ -15,6 +15,8 @@ export interface OpcaoCatalogo {
   price_cents: number;
   medidas?: string;
   descricao?: string;
+  /** Se especificado, este acessório só é compatível com os modelos de bagageiro listados */
+  modelos_compativeis?: string[];
 }
 
 export interface VeiculoConfig {
@@ -78,10 +80,30 @@ export const CATALOGO_VEICULOS: Record<string, VeiculoConfig> = {
     ],
     acessorios: [
       { value: "escada", label: "Escada removível", price_cents: 62000 },
-      { value: "deck_completo", label: "Deck completo (para MX 100 / 200)", price_cents: 196000 },
-      { value: "meio_deck", label: "Meio deck (para MX 100 / 200)", price_cents: 108000 },
-      { value: "deck_mx80", label: "Deck para MX 80 Plus", price_cents: 157000 },
-      { value: "deck_mx50", label: "Deck para MX 50 Plus", price_cents: 73000 },
+      {
+        value: "deck_completo",
+        label: "Deck completo",
+        price_cents: 196000,
+        modelos_compativeis: ["mx_100", "mx_100_plus", "mx_200_plus"],
+      },
+      {
+        value: "meio_deck",
+        label: "Meio deck",
+        price_cents: 108000,
+        modelos_compativeis: ["mx_100", "mx_100_plus", "mx_200_plus"],
+      },
+      {
+        value: "deck_mx80",
+        label: "Deck para MX 80 Plus",
+        price_cents: 157000,
+        modelos_compativeis: ["mx_80_plus"],
+      },
+      {
+        value: "deck_mx50",
+        label: "Deck para MX 50 Plus",
+        price_cents: 73000,
+        modelos_compativeis: ["mx_50_plus"],
+      },
       { value: "deck_escada", label: "Deck nos degraus da escada", price_cents: 20000 },
       { value: "suporte_estepe", label: "Suporte para estepe", price_cents: 38000 },
       { value: "base_toldo", label: "Base para toldo", price_cents: 33000 },
@@ -375,9 +397,14 @@ export function obterModelosPorVeiculo(veiculoKey?: string | null): OpcaoCatalog
 
 /**
  * Retorna a lista de acessórios adicionais permitidos para o veículo especificado com rótulos limpos.
+ * Se informado `modeloBagageiro`, filtra também os acessórios compatíveis com esse modelo específico.
  * Se o veículo não for informado, retorna todos os acessórios possíveis.
  */
-export function obterAcessoriosPorVeiculo(veiculoKey?: string | null): OpcaoCatalogo[] {
+export function obterAcessoriosPorVeiculo(
+  veiculoKey?: string | null,
+  modeloBagageiro?: string | null,
+): OpcaoCatalogo[] {
+  let lista: OpcaoCatalogo[] = [];
   if (!veiculoKey || !(veiculoKey in CATALOGO_VEICULOS)) {
     const todos: OpcaoCatalogo[] = [];
     const seen = new Set<string>();
@@ -389,10 +416,23 @@ export function obterAcessoriosPorVeiculo(veiculoKey?: string | null): OpcaoCata
         }
       }
     }
-    return todos;
+    lista = todos;
+  } else {
+    lista = CATALOGO_VEICULOS[veiculoKey]!.acessorios;
   }
 
-  return CATALOGO_VEICULOS[veiculoKey]!.acessorios;
+  // Se um modelo de bagageiro específico foi selecionado:
+  if (modeloBagageiro) {
+    return lista.filter(
+      (a) =>
+        !a.modelos_compativeis ||
+        a.modelos_compativeis.length === 0 ||
+        a.modelos_compativeis.includes(modeloBagageiro),
+    );
+  }
+
+  // Se nenhum modelo de bagageiro foi selecionado, esconde acessórios que exigem um modelo específico
+  return lista.filter((a) => !a.modelos_compativeis || a.modelos_compativeis.length === 0);
 }
 
 /**
