@@ -135,7 +135,7 @@ export const CAMPOS_CONHECIDOS_DO_PERFIL: Record<string, CustomFieldDef> = {
     label: "Modalidade pretendida",
     type: "select",
     options: [
-      { value: "transportadora", label: "Transportadora" },
+      { value: "transportadora", label: "Entrega" },
       { value: "instalacao_loja", label: "Instalação na loja" },
       { value: "a_definir", label: "A definir" },
     ],
@@ -143,6 +143,36 @@ export const CAMPOS_CONHECIDOS_DO_PERFIL: Record<string, CustomFieldDef> = {
   cep: {
     key: "cep",
     label: "CEP",
+    type: "text",
+  },
+  endereco: {
+    key: "endereco",
+    label: "Endereço",
+    type: "text",
+  },
+  numero: {
+    key: "numero",
+    label: "Número",
+    type: "text",
+  },
+  complemento: {
+    key: "complemento",
+    label: "Complemento",
+    type: "text",
+  },
+  bairro: {
+    key: "bairro",
+    label: "Bairro",
+    type: "text",
+  },
+  cidade: {
+    key: "cidade",
+    label: "Cidade",
+    type: "text",
+  },
+  estado: {
+    key: "estado",
+    label: "Estado (UF)",
     type: "text",
   },
   tipo_precificacao: {
@@ -192,19 +222,6 @@ export const CAMPOS_CONHECIDOS_DO_PERFIL: Record<string, CustomFieldDef> = {
       { value: "nao_aprovado", label: "Não aprovado" },
     ],
   },
-  motivo_ganho: {
-    key: "motivo_ganho",
-    label: "Motivo de ganho",
-    type: "select",
-    options: [
-      { value: "atendimento_rapido", label: "Atendimento rápido" },
-      { value: "qualidade_resistencia", label: "Qualidade e resistência do produto" },
-      { value: "preco_condicoes", label: "Preço e condições de pagamento" },
-      { value: "pronta_entrega_instalacao", label: "Disponibilidade / Instalação na loja" },
-      { value: "indicacao_reputacao", label: "Indicação / Reputação da marca" },
-      { value: "outro", label: "Outro motivo" },
-    ],
-  },
   referencia_venda: {
     key: "referencia_venda",
     label: "Referência da venda / ID da oportunidade",
@@ -215,7 +232,7 @@ export const CAMPOS_CONHECIDOS_DO_PERFIL: Record<string, CustomFieldDef> = {
     label: "Modalidade de entrega",
     type: "select",
     options: [
-      { value: "transportadora", label: "Transportadora" },
+      { value: "transportadora", label: "Entrega" },
       { value: "instalacao_loja", label: "Instalação na loja" },
     ],
   },

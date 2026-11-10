@@ -81,12 +81,12 @@ export function ResumoOrcamentoProjeto({
           </div>
         )}
 
-        {/* 4. Frete */}
+        {/* 4. Frete / Entrega */}
         {resumo.frete_cents > 0 && (
           <div className="flex items-center justify-between border-t border-accent/10 pt-1 text-text">
             <div className="flex items-center gap-1.5">
               <Truck size={13} className="text-blue-500" />
-              <span>{t("Frete / Transportadora")}</span>
+              <span>{t("Entrega")}</span>
             </div>
             <span className="font-mono font-medium text-text">
               {formatCents(resumo.frete_cents, moeda)}

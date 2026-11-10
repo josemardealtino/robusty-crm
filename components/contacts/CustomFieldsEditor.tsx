@@ -129,6 +129,14 @@ function obterOpcoesDoCampo(
   return f.options ?? [];
 }
 
+function formatarCep(val: string): string {
+  const clean = val.replace(/\D/g, "").slice(0, 8);
+  if (clean.length > 5) {
+    return `${clean.slice(0, 5)}-${clean.slice(5)}`;
+  }
+  return clean;
+}
+
 export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, className, leadId }: Props) {
   const t = useT();
   const [rascunhosDeMoeda, setRascunhosDeMoeda] = useState<Record<string, string>>({});
@@ -139,6 +147,34 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
   // Os campos cujo último blur RECUSOU o texto (fora da lista, sem `allow_new`).
   // Sem o aviso, o input só voltava ao valor anterior e a pessoa não sabia por quê.
   const [recusados, setRecusados] = useState<Record<string, true>>({});
+  const [buscandoCep, setBuscandoCep] = useState(false);
+  const [avisoCep, setAvisoCep] = useState<string | null>(null);
+
+  async function consultarViaCep(cepFormatado: string) {
+    const limpo = cepFormatado.replace(/\D/g, "");
+    if (limpo.length !== 8) return;
+    try {
+      setBuscandoCep(true);
+      setAvisoCep(null);
+      const res = await fetch(`https://viacep.com.br/ws/${limpo}/json/`);
+      if (!res.ok) throw new Error("Erro na consulta de CEP");
+      const dados = await res.json();
+      if (dados.erro) {
+        setAvisoCep(t("CEP não encontrado. Preencha o endereço manualmente abaixo."));
+        return;
+      }
+      const next: Record<string, unknown> = { ...value, cep: cepFormatado };
+      if (dados.logradouro) next.endereco = dados.logradouro;
+      if (dados.bairro) next.bairro = dados.bairro;
+      if (dados.localidade) next.cidade = dados.localidade;
+      if (dados.uf) next.estado = dados.uf;
+      onChange(next);
+    } catch (_err) {
+      setAvisoCep(t("Não foi possível buscar o endereço automaticamente. Preencha manualmente."));
+    } finally {
+      setBuscandoCep(false);
+    }
+  }
   // A lista aberta do `searchable_select` e a opção destacada nela. Um campo
   // por vez, porque só um tem o foco. `-1` = nada destacado: sair do campo
   // sem ter escolhido não grava palpite. Só as SETAS mexem no destaque: o
@@ -699,7 +735,46 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
               </div>
             );
           case "text":
-          default:
+          default: {
+            if (f.key === "cep") {
+              const valorTexto = typeof v === "string" ? v : "";
+              return (
+                <div key={f.key} className="space-y-2">
+                  {labelEl}
+                  <Input
+                    id={id}
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="00000-000"
+                    value={formatarCep(valorTexto)}
+                    onChange={(e) => {
+                      const formatado = formatarCep(e.target.value);
+                      set(f.key, formatado);
+                      if (formatado.replace(/\D/g, "").length === 8) {
+                        void consultarViaCep(formatado);
+                      }
+                    }}
+                    onBlur={() => {
+                      const limpo = valorTexto.replace(/\D/g, "");
+                      if (limpo.length === 8 && !value.endereco) {
+                        void consultarViaCep(valorTexto);
+                      }
+                    }}
+                    disabled={disabled}
+                  />
+                  {buscandoCep && (
+                    <p className="text-xs text-muted-foreground animate-pulse">
+                      {t("Buscando endereço pelo CEP...")}
+                    </p>
+                  )}
+                  {avisoCep && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      {avisoCep}
+                    </p>
+                  )}
+                </div>
+              );
+            }
             return (
               <div key={f.key} className="space-y-2">
                 {labelEl}
@@ -712,6 +787,7 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
                 />
               </div>
             );
+          }
         }
       })}
     </div>

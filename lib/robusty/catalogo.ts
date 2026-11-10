@@ -444,9 +444,11 @@ export interface ResumoOrcamentoRobusty {
   acessorios: Array<{ key: string; label: string; price_cents: number }>;
   instalacao: { label: string; price_cents: number } | null;
   frete_cents: number;
+  frete_reais: number;
   total_produtos_cents: number;
   total_servicos_cents: number;
   total_geral_cents: number;
+  total_geral_reais: number;
 }
 
 /**
@@ -519,15 +521,17 @@ export function calcularOrcamentoProjeto(
       label: `Instalação Presencial (${veiculoConfig?.label ?? "Oficina SP"})`,
       price_cents: custoInstalacao,
     };
-  } else if (modalidade === "transportadora") {
+  } else if (modalidade === "transportadora" || modalidade === "entrega") {
+    let freteReais = 0;
     if (typeof cf.valor_frete === "number") {
-      frete_cents = Math.round(cf.valor_frete);
+      freteReais = cf.valor_frete;
     } else if (typeof cf.valor_frete === "string" && cf.valor_frete.trim()) {
       const num = Number(cf.valor_frete.replace(",", "."));
       if (!Number.isNaN(num)) {
-        frete_cents = Math.round(num * 100);
+        freteReais = num;
       }
     }
+    frete_cents = Math.round(freteReais * 100);
   }
 
   const total_produtos_cents =
@@ -544,8 +548,10 @@ export function calcularOrcamentoProjeto(
     acessorios,
     instalacao,
     frete_cents,
+    frete_reais: frete_cents / 100,
     total_produtos_cents,
     total_servicos_cents,
     total_geral_cents,
+    total_geral_reais: total_geral_cents / 100,
   };
 }

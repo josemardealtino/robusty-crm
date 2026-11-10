@@ -308,7 +308,7 @@ async function main() {
       label: 'Modalidade pretendida',
       type: 'select',
       options: [
-        { value: 'transportadora', label: 'Transportadora' },
+        { value: 'transportadora', label: 'Entrega' },
         { value: 'instalacao_loja', label: 'Instalação na loja' },
         { value: 'a_definir', label: 'A definir' }
       ]
@@ -319,6 +319,42 @@ async function main() {
       type: 'text',
       padrao: '^\\d{5}-?\\d{3}$',
       mensagem_padrao: 'Digite o CEP com 8 dígitos, ex: 03525-150',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
+    },
+    {
+      key: 'endereco',
+      label: 'Endereço',
+      type: 'text',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
+    },
+    {
+      key: 'numero',
+      label: 'Número',
+      type: 'text',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
+    },
+    {
+      key: 'complemento',
+      label: 'Complemento',
+      type: 'text',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
+    },
+    {
+      key: 'bairro',
+      label: 'Bairro',
+      type: 'text',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
+    },
+    {
+      key: 'cidade',
+      label: 'Cidade',
+      type: 'text',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
+    },
+    {
+      key: 'estado',
+      label: 'Estado (UF)',
+      type: 'text',
       mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
     },
     {
@@ -396,19 +432,6 @@ async function main() {
         { value: 'nao_aprovado', label: 'Não aprovado' }
       ],
       obrigatorio_em: { ao_ganhar: true }
-    },
-    {
-      key: 'motivo_ganho',
-      label: 'Motivo de ganho',
-      type: 'select',
-      options: [
-        { value: 'atendimento_rapido', label: 'Atendimento rápido' },
-        { value: 'qualidade_resistencia', label: 'Qualidade e resistência do produto' },
-        { value: 'preco_condicoes', label: 'Preço e condições de pagamento' },
-        { value: 'pronta_entrega_instalacao', label: 'Disponibilidade / Instalação na loja' },
-        { value: 'indicacao_reputacao', label: 'Indicação / Reputação da marca' },
-        { value: 'outro', label: 'Outro motivo' }
-      ]
     }
   ];
 
@@ -456,7 +479,9 @@ async function main() {
     ...(leadsPipeline.settings || {}),
     fields: leadsFieldsDef,
     lost_reasons: leadsLostReasons,
-    new_lead_form: leadsNewLeadForm
+    new_lead_form: leadsNewLeadForm,
+    won_reason_required: false,
+    won_reasons: []
   };
 
   const { error: errUpdLeadsSet } = await sb.from('crm_pipelines')
@@ -589,7 +614,7 @@ async function main() {
       label: 'Modalidade de entrega',
       type: 'select',
       options: [
-        { value: 'transportadora', label: 'Transportadora' },
+        { value: 'transportadora', label: 'Entrega' },
         { value: 'instalacao_loja', label: 'Instalação na loja' }
       ],
       obrigatorio_em: modalidadeDefinidaStageId ? { etapas: [modalidadeDefinidaStageId] } : undefined
@@ -716,7 +741,9 @@ async function main() {
   const pedidosSettings = {
     ...(pedidosPipeline.settings || {}),
     fields: pedidosFieldsDef,
-    lost_reasons: pedidosLostReasons
+    lost_reasons: pedidosLostReasons,
+    won_reason_required: false,
+    won_reasons: []
   };
 
   const { error: errUpdPedSet } = await sb.from('crm_pipelines')

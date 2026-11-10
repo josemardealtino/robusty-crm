@@ -92,19 +92,29 @@ describe("Catálogo Oficial Robusty — Filtragem em Cascata e Cálculo de Preç
     expect(orcamento.total_geral_cents).toBe(342000); // 3220 + 200 = 3420 (R$ 3.420,00)
   });
 
-  it("Calcula frete corretamente na modalidade transportadora", () => {
+  it("Calcula frete corretamente na modalidade transportadora e entrega em reais", () => {
     const customFields = {
       veiculo: "fiorino",
       modelo_bagageiro: "fx_100", // R$ 2.200,00
       modalidade_pretendida: "transportadora",
-      valor_frete: 18000, // R$ 180,00 em centavos
+      valor_frete: 180, // R$ 180,00 em reais
     };
 
     const orcamento = calcularOrcamentoProjeto(customFields);
 
     expect(orcamento.bagageiro?.price_cents).toBe(220000);
     expect(orcamento.frete_cents).toBe(18000);
+    expect(orcamento.frete_reais).toBe(180);
     expect(orcamento.instalacao).toBeNull();
     expect(orcamento.total_geral_cents).toBe(238000); // R$ 2.380,00
+    expect(orcamento.total_geral_reais).toBe(2380);
+
+    // Teste com modalidade "entrega" e valor com centavos (R$ 11,50)
+    const orcamentoEntrega = calcularOrcamentoProjeto({
+      modalidade_pretendida: "entrega",
+      valor_frete: 11.5,
+    });
+    expect(orcamentoEntrega.frete_cents).toBe(1150);
+    expect(orcamentoEntrega.frete_reais).toBe(11.5);
   });
 });

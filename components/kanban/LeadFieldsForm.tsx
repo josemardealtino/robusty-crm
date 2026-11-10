@@ -272,74 +272,23 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
           <Textarea id="description" rows={3} {...form.register("description")} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            {/* O rótulo segue a moeda do NEGÓCIO (a organização é a reserva):
-                  `R$` em duro mentia para quem opera em euro. */}
-            <Label htmlFor="valueReais">{t("Valor")} ({simboloDaMoeda(moedaDoValor)})</Label>
-            <Input
-              id="valueReais"
-              inputMode="decimal"
-              placeholder="0,00"
-              {...form.register("valueReais")}
-            />
-            <EcoDoValor control={form.control} moeda={moedaDoValor} />
-            {form.formState.errors.valueReais && (
-              <p className="text-xs text-error-fg">
-                {t(form.formState.errors.valueReais.message ?? "")}
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="expected_close_date">{t("Fechamento previsto")}</Label>
-            <Input
-              id="expected_close_date"
-              type="date"
-              {...form.register("expected_close_date")}
-            />
-          </div>
-        </div>
-
-        {/* A MENSALIDADE (fatia 1 da #3602) no dossiê: o mesmo par de campos do
-            diálogo do funil, com a mesma leitura — quem edita o negócio da
-            conversa não deveria precisar abrir o quadro para corrigir o
-            contrato. */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label htmlFor="valorRecorrenteReais">
-              {t("Valor recorrente (mensal)")} ({simboloDaMoeda(moedaDoValor)})
-            </Label>
-            <Input
-              id="valorRecorrenteReais"
-              inputMode="decimal"
-              placeholder="0,00"
-              {...form.register("valorRecorrenteReais")}
-            />
-            <EcoDoValor
-              control={form.control}
-              moeda={moedaDoValor}
-              campo="valorRecorrenteReais"
-            />
-            {form.formState.errors.valorRecorrenteReais && (
-              <p className="text-xs text-error-fg">
-                {form.formState.errors.valorRecorrenteReais.message}
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="recorrenciaMeses">{t("Duração (meses)")}</Label>
-            <Input
-              id="recorrenciaMeses"
-              inputMode="numeric"
-              placeholder={t("sem prazo")}
-              {...form.register("recorrenciaMeses")}
-            />
-            {form.formState.errors.recorrenciaMeses && (
-              <p className="text-xs text-error-fg">
-                {form.formState.errors.recorrenciaMeses.message}
-              </p>
-            )}
-          </div>
+        <div className="space-y-2">
+          {/* O rótulo segue a moeda do NEGÓCIO (a organização é a reserva):
+                `R$` em duro mentia para quem opera em euro. */}
+          <Label htmlFor="valueReais">{t("Valor")} ({simboloDaMoeda(moedaDoValor)})</Label>
+          <Input
+            id="valueReais"
+            inputMode="decimal"
+            placeholder="0,00"
+            className="w-full"
+            {...form.register("valueReais")}
+          />
+          <EcoDoValor control={form.control} moeda={moedaDoValor} />
+          {form.formState.errors.valueReais && (
+            <p className="text-xs text-error-fg">
+              {t(form.formState.errors.valueReais.message ?? "")}
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -370,7 +319,7 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
             <ResumoOrcamentoProjeto
               customFields={customFields}
               moeda={moedaDoValor}
-              className="mt-3"
+              className="mt-3 w-full block"
               onAtualizarValorTotal={(totalCents) => {
                 form.setValue("valueReais", (totalCents / 100).toFixed(2).replace(".", ","));
               }}
