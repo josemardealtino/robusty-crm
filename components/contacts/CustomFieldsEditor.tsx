@@ -522,7 +522,10 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
               limparRascunho();
             };
             return (
-              <div key={f.key} className="space-y-2">
+              <div
+                key={f.key}
+                className={`space-y-2 ${multiplo || f.key === "acessorios_adicionais" ? "md:col-span-2" : ""}`}
+              >
                 {labelEl}
                 {/* OS CHIPS (#3182): o que já foi escolhido, um por opção, com
                     o rótulo da lista e um botão para tirar. É o que substitui o
@@ -776,7 +779,10 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
               );
             }
             return (
-              <div key={f.key} className="space-y-2">
+              <div
+                key={f.key}
+                className={`space-y-2 ${f.key === "endereco" ? "md:col-span-2" : ""}`}
+              >
                 {labelEl}
                 <Input
                   id={id}

@@ -13,29 +13,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEditLead } from "@/hooks/kanban/useUpdateLead";
 import type { Lead } from "@/lib/types/leads";
 import { updateLeadSchema, type UpdateLeadInput } from "@/lib/schemas/leads";
-import { MOEDA_PADRAO, parseReaisToCents, simboloDaMoeda } from "@/lib/money";
+import { MOEDA_PADRAO } from "@/lib/money";
 import { mesclarCamposDoPerfil } from "@/lib/leads/campos-do-perfil";
 import { soChavesAlteradas } from "@/lib/leads/custom-fields-so-diff";
 import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
 import { ContactTagsEditor } from "@/components/inbox/ContactTagsEditor";
 import { lerRecorrenciaDoFormulario } from "@/lib/leads/valor-recorrente";
-import { EcoDoValor } from "./EcoDoValor";
 import type { CampoConfirmadoDoDocumento } from "./RevisaoDoDocumento";
-import { ResumoOrcamentoProjeto } from "./ResumoOrcamentoProjeto";
 import { calcularOrcamentoProjeto } from "@/lib/robusty/catalogo";
 
-/**
- * As etiquetas do negócio SAÍRAM deste formulário (#2979): quem as edita é o
- * `ContactTagsEditor`, que grava na hora em `crm_leads.tags`. Manter um
- * `tagsRaw` aqui seria pior do que redundância — "Salvar" reenviaria a lista
- * carregada na abertura do dossiê e DESFARIA em silêncio a etiqueta que a
- * pessoa acabou de criar no editor.
- */
 interface FormShape {
   title: string;
-  description: string;
-  valueReais: string;
-  /** Mensalidade e duração do contrato (fatia 1 da #3602), em texto. */
+  detalhesDaNecessidade: string;
   valorRecorrenteReais: string;
   recorrenciaMeses: string;
   expected_close_date: string;
@@ -55,50 +44,49 @@ export interface RascunhoDosCamposDoNegocio {
 export interface ControleDosCamposDoNegocio {
   confirmarCampo: (confirmado: CampoConfirmadoDoDocumento) => void;
   obterRascunhoAtual?: () => RascunhoDosCamposDoNegocio;
+  submeter?: () => void;
+  customFields?: Record<string, unknown>;
+  setCustomField?: (campo: string, valor: unknown) => void;
 }
 
 interface Props {
   lead: Lead;
   pipelineId: string;
   fieldDefs?: CustomFieldDef[];
-  /** Quando o salvamento dá certo. O dossiê NÃO fecha aqui — ver abaixo. */
   onSaved?: () => void;
-  /** O dossiê não tem "cancelar"; o diálogo tem. */
   onCancel?: () => void;
-  /** Confirmação externa do próprio card: preserva os outros campos em edição. */
   controle?: Ref<ControleDosCamposDoNegocio>;
+  onCustomFieldsChange?: (cf: Record<string, unknown>) => void;
+  mostrarBotoesAcao?: boolean;
 }
 
-function centsToReais(cents: number | null | undefined): string {
-  if (cents === null || cents === undefined) return "";
-  return (cents / 100).toFixed(2).replace(".", ",");
+function obterTextoUnificado(lead: Lead, cf: Record<string, unknown>): string {
+  const desc = (lead.description ?? "").trim();
+  const det = typeof cf.detalhes_da_necessidade === "string" ? cf.detalhes_da_necessidade.trim() : "";
+  if (desc && det) {
+    return desc === det ? desc : `${desc}\n\n${det}`;
+  }
+  return desc || det || "";
 }
 
-/** Duração em meses como texto (`null` = sem prazo, que é o campo vazio). */
-function mesesComoTexto(meses: number | null | undefined): string {
-  return meses === null || meses === undefined ? "" : String(meses);
-}
-
-/**
- * Os campos do lead — extraídos do `EditLeadDialog` para o dossiê usar os
- * MESMOS, em vez de uma cópia que diverge no mês.
- *
- * `onSaved` existe para o dossiê NÃO FECHAR ao salvar: quem edita precisa ver a
- * atividade que acabou de gerar entrar na timeline. Fechar esconderia o
- * registro justamente de quem o produziu — a funcionalidade que prova "sua ação
- * fica registrada" provaria isso para todo mundo menos para o autor.
- */
-export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCancel, controle }: Props) {
+export function LeadFieldsForm({
+  lead,
+  pipelineId,
+  fieldDefs = [],
+  onSaved,
+  onCancel,
+  controle,
+  onCustomFieldsChange,
+  mostrarBotoesAcao = true,
+}: Props) {
   const t = useT();
   const org = useActiveOrg();
-  // A moeda do negócio JÁ GRAVADO vence: trocar a moeda da empresa não
-  // reescreve o que nasceu antes, e o cartão e o dossiê mostram a persistida.
   const moedaDoValor = lead.currency ?? org?.currency ?? MOEDA_PADRAO;
   const edit = useEditLead(pipelineId);
-  const [customFields, setCustomFields] = useState<Record<string, unknown>>(lead.custom_fields ?? {});
-  // A RÉGUA do diff (issue #2132): o valor carregado ao abrir. Só o que a
-  // pessoa mudar daqui vai viajar — devolver o objeto inteiro sobrescrevia o
-  // que outra pessoa (ou o MCP `crm_update_lead`) mudou com a ficha aberta.
+
+  const [customFields, setCustomFields] = useState<Record<string, unknown>>(
+    lead.custom_fields ?? {},
+  );
   const [camposCarregados, setCamposCarregados] = useState<Record<string, unknown>>(
     lead.custom_fields ?? {},
   );
@@ -106,10 +94,9 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
   const form = useForm<FormShape>({
     defaultValues: {
       title: lead.title,
-      description: lead.description ?? "",
-      valueReais: centsToReais(lead.value_cents),
-      valorRecorrenteReais: centsToReais(lead.recurring_value_cents),
-      recorrenciaMeses: mesesComoTexto(lead.recurring_months),
+      detalhesDaNecessidade: obterTextoUnificado(lead, lead.custom_fields ?? {}),
+      valorRecorrenteReais: "",
+      recorrenciaMeses: "",
       expected_close_date: lead.expected_close_date ?? "",
     },
   });
@@ -117,10 +104,9 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
   useEffect(() => {
     form.reset({
       title: lead.title,
-      description: lead.description ?? "",
-      valueReais: centsToReais(lead.value_cents),
-      valorRecorrenteReais: centsToReais(lead.recurring_value_cents),
-      recorrenciaMeses: mesesComoTexto(lead.recurring_months),
+      detalhesDaNecessidade: obterTextoUnificado(lead, lead.custom_fields ?? {}),
+      valorRecorrenteReais: "",
+      recorrenciaMeses: "",
       expected_close_date: lead.expected_close_date ?? "",
     });
     setCustomFields(lead.custom_fields ?? {});
@@ -128,100 +114,103 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id]);
 
-  const camposDoPerfil = useMemo(
-    () => mesclarCamposDoPerfil(fieldDefs, customFields),
-    [fieldDefs, customFields],
+  function handleCustomFieldsChange(next: Record<string, unknown>) {
+    setCustomFields(next);
+    onCustomFieldsChange?.(next);
+  }
+
+  // Filtra detalhes_da_necessidade, valor_desconto e tipo_desconto para que não
+  // apareçam duplicados nos campos gerais do CustomFieldsEditor.
+  const camposDoPerfil = useMemo(() => {
+    const mesclados = mesclarCamposDoPerfil(fieldDefs, customFields);
+    return mesclados.filter(
+      (c) =>
+        c.key !== "detalhes_da_necessidade" &&
+        c.key !== "valor_desconto" &&
+        c.key !== "tipo_desconto",
+    );
+  }, [fieldDefs, customFields]);
+
+  useImperativeHandle(
+    controle,
+    () => ({
+      confirmarCampo(confirmacao) {
+        if (confirmacao.leadId !== lead.id) return;
+        const { campo, valor } = confirmacao;
+        const next = { ...customFields, [campo]: valor };
+        setCustomFields(next);
+        setCamposCarregados(next);
+        onCustomFieldsChange?.(next);
+      },
+      obterRascunhoAtual() {
+        const vals = form.getValues();
+        const textoObservacoes = vals.detalhesDaNecessidade.trim() || null;
+        const orcamento = calcularOrcamentoProjeto(customFields);
+        const valueCentsFinal =
+          orcamento.total_geral_cents > 0
+            ? orcamento.total_geral_cents
+            : lead.value_cents ?? null;
+
+        return {
+          title: vals.title.trim() || lead.title,
+          description: textoObservacoes,
+          value_cents: valueCentsFinal,
+          recurring_value_cents: lead.recurring_value_cents ?? null,
+          recurring_period: lead.recurring_period === "monthly" ? "monthly" : null,
+          recurring_months: lead.recurring_months ?? null,
+          expected_close_date: vals.expected_close_date || null,
+          custom_fields: {
+            ...customFields,
+            detalhes_da_necessidade: textoObservacoes,
+          },
+        };
+      },
+      submeter() {
+        void form.handleSubmit(onSubmit)();
+      },
+      customFields,
+      setCustomField(campo: string, valor: unknown) {
+        const next = { ...customFields, [campo]: valor };
+        setCustomFields(next);
+        onCustomFieldsChange?.(next);
+      },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lead.id, lead.title, lead.recurring_value_cents, lead.recurring_period, lead.recurring_months, form, customFields],
   );
 
-  useImperativeHandle(controle, () => ({
-    confirmarCampo(confirmacao) {
-      // A confirmação pode terminar depois de a pessoa abrir outro card.
-      if (confirmacao.leadId !== lead.id) return;
-      const { campo, valor } = confirmacao;
-      // O evento já gravou este valor: atualiza o campo e a régua do diff,
-      // preservando os outros rascunhos. Não remonta o formulário (#2132).
-      setCustomFields((atuais) => ({ ...atuais, [campo]: valor }));
-      setCamposCarregados((atuais) => ({ ...atuais, [campo]: valor }));
-    },
-    obterRascunhoAtual() {
-      const vals = form.getValues();
-      const reais = vals.valueReais.trim();
-      const valueCents = reais.length > 0 ? parseReaisToCents(reais, moedaDoValor) : null;
-      const apagouAMensalidade =
-        lead.recurring_value_cents != null && vals.valorRecorrenteReais.trim() === "";
-      const leitura = lerRecorrenciaDoFormulario(
-        vals.valorRecorrenteReais,
-        apagouAMensalidade ? "" : vals.recorrenciaMeses,
-        moedaDoValor,
-      );
-      return {
-        title: vals.title.trim() || lead.title,
-        description: vals.description.trim() ? vals.description.trim() : null,
-        value_cents: valueCents,
-        ...(leitura.ok
-          ? leitura.trio
-          : {
-              recurring_value_cents: lead.recurring_value_cents ?? null,
-              recurring_period: lead.recurring_period === "monthly" ? ("monthly" as const) : null,
-              recurring_months: lead.recurring_months ?? null,
-            }),
-        expected_close_date: vals.expected_close_date || null,
-        custom_fields: { ...customFields },
-      };
-    },
-  }), [lead.id, lead.title, lead.recurring_value_cents, lead.recurring_period, lead.recurring_months, form, moedaDoValor, customFields]);
-
   async function onSubmit(values: FormShape) {
-    const reais = values.valueReais.trim();
-    let valueCents: number | null = null;
-    if (reais.length > 0) {
-      // A MESMA moeda que o rótulo do campo mostra ao lado («Valor ($)»): é ela
-      // que decide se a vírgula é decimal ou separador de milhar (#3331).
-      valueCents = parseReaisToCents(reais, moedaDoValor);
-      if (valueCents === null) {
-        form.setError("valueReais", { message: t("Valor inválido") });
-        return;
-      }
-    }
+    const textoObservacoes = values.detalhesDaNecessidade.trim() || null;
+    const orcamento = calcularOrcamentoProjeto(customFields);
+    const valueCentsFinal =
+      orcamento.total_geral_cents > 0
+        ? orcamento.total_geral_cents
+        : lead.value_cents ?? null;
 
-    // O RECORRENTE (fatia 1 da #3602) — a régua compartilhada com o diálogo de
-    // criação e com o de edição; aqui também vai sempre, para apagar o campo
-    // significar "não tem mais mensalidade".
-    // Apagar a mensalidade de um negócio que a TINHA leva a duração junto: é a
-    // regra 1 do trio, a mesma do servidor (`recorrenciaParaGravar`). Duração
-    // digitada num negócio que nunca teve mensalidade segue sendo recusa.
-    const apagouAMensalidade =
-      lead.recurring_value_cents != null && values.valorRecorrenteReais.trim() === "";
+    const cfParaGravar: Record<string, unknown> = {
+      ...customFields,
+      detalhes_da_necessidade: textoObservacoes,
+    };
+
     const leitura = lerRecorrenciaDoFormulario(
       values.valorRecorrenteReais,
-      apagouAMensalidade ? "" : values.recorrenciaMeses,
+      values.recorrenciaMeses,
       moedaDoValor,
     );
-    if (!leitura.ok) {
-      form.setError(leitura.campo === "valor" ? "valorRecorrenteReais" : "recorrenciaMeses", {
-        message:
-          leitura.motivo === "valor_invalido"
-            ? t("Valor inválido")
-            : leitura.motivo === "duracao_invalida"
-              ? t("Duração inválida")
-              : t("Informe a mensalidade para usar a duração"),
-      });
-      return;
-    }
-
-    const orcamento = calcularOrcamentoProjeto(customFields);
-    const valueCentsFinal = valueCents ?? (orcamento.total_geral_cents > 0 ? orcamento.total_geral_cents : null);
 
     const patch: Record<string, unknown> = {
-      title: values.title.trim(),
-      description: values.description.trim() ? values.description.trim() : null,
+      title: values.title.trim() || lead.title,
+      description: textoObservacoes,
       value_cents: valueCentsFinal,
-      ...leitura.trio,
+      ...(leitura.ok
+        ? leitura.trio
+        : {
+            recurring_value_cents: lead.recurring_value_cents ?? null,
+            recurring_period: lead.recurring_period === "monthly" ? ("monthly" as const) : null,
+            recurring_months: lead.recurring_months ?? null,
+          }),
       expected_close_date: values.expected_close_date || null,
-      // Só o que a pessoa alterou (issue #2132) — o merge continua do servidor.
-      ...(camposDoPerfil.length > 0
-        ? { custom_fields: soChavesAlteradas(camposCarregados, customFields) }
-        : {}),
+      custom_fields: soChavesAlteradas(camposCarregados, cfParaGravar),
     };
 
     const parsed = updateLeadSchema.safeParse(patch);
@@ -236,9 +225,7 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
         leadId: lead.id,
         patch: parsed.data as UpdateLeadInput,
       });
-      // O que acabou de gravar vira a nova régua: o segundo salvamento não
-      // reenvia o primeiro, e uma limpeza alheia no intervalo não é atropelada.
-      setCamposCarregados({ ...customFields });
+      setCamposCarregados({ ...cfParaGravar });
       toast.success(t("Negócio atualizado"));
       onSaved?.();
     } catch {
@@ -246,97 +233,90 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
     }
   }
 
-
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        {lead.commercial_id && (
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">{t("Identificador único")}</Label>
-            <div className="flex items-center justify-between rounded-md border border-input bg-muted/40 px-3 py-1.5 text-xs font-mono font-semibold text-accent">
-              <span>{lead.commercial_id}</span>
-              <span className="text-[10px] text-muted-foreground font-sans font-normal">{t("Imutável")}</span>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label htmlFor="title">{t("Título")}</Label>
-          <Input
-            id="title"
-            {...form.register("title", { required: true, minLength: 2 })}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="description">{t("Descrição")}</Label>
-          <Textarea id="description" rows={3} {...form.register("description")} />
-        </div>
-
-        <div className="space-y-2">
-          {/* O rótulo segue a moeda do NEGÓCIO (a organização é a reserva):
-                `R$` em duro mentia para quem opera em euro. */}
-          <Label htmlFor="valueReais">{t("Valor")} ({simboloDaMoeda(moedaDoValor)})</Label>
-          <Input
-            id="valueReais"
-            inputMode="decimal"
-            placeholder="0,00"
-            className="w-full"
-            {...form.register("valueReais")}
-          />
-          <EcoDoValor control={form.control} moeda={moedaDoValor} />
-          {form.formState.errors.valueReais && (
-            <p className="text-xs text-error-fg">
-              {t(form.formState.errors.valueReais.message ?? "")}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          {/* A etiqueta do NEGÓCIO (#2979): o MESMO editor do Inbox, gravando
-              na OUTRA caixa — `crm_leads.tags` por `PATCH /api/v1/leads/{id}`,
-              nunca o perfil do contato. Ele grava na hora; por isso o dossiê
-              não carrega mais o campo de texto livre que substituía a lista. */}
-          <p className="text-sm font-medium">{t("Tags do negócio")}</p>
-          <ContactTagsEditor
-            entityType="lead"
-            entityId={lead.id}
-            pipelineId={pipelineId}
-            orgId={org?.orgId ?? ""}
-            tags={lead.tags ?? []}
-          />
-        </div>
-
-        {camposDoPerfil.length > 0 && (
-          <div className="space-y-2 border-t border-border pt-4">
-            <p className="text-sm font-medium">{t("Campos do funil")}</p>
-            <CustomFieldsEditor
-              fields={camposDoPerfil}
-              value={customFields}
-              onChange={setCustomFields}
-              mode="lead"
-              leadId={lead.id}
-            />
-            <ResumoOrcamentoProjeto
-              customFields={customFields}
-              moeda={moedaDoValor}
-              className="mt-3 w-full block"
-              onAtualizarValorTotal={(totalCents) => {
-                form.setValue("valueReais", (totalCents / 100).toFixed(2).replace(".", ","));
-              }}
-            />
-          </div>
-        )}
-
-      <div className="flex justify-end gap-2">
-        {onCancel && (
-          <Button type="button" variant="ghost" onClick={onCancel} disabled={edit.isPending}>
-            {t("Cancelar")}
-          </Button>
-        )}
-        <Button type="submit" disabled={edit.isPending}>
-          {edit.isPending ? t("Salvando…") : t("Salvar")}
-        </Button>
+    <form
+      id="lead-fields-form"
+      onSubmit={form.handleSubmit(onSubmit)}
+      className="space-y-5"
+    >
+      {/* 1. Título do Negócio */}
+      <div className="space-y-1.5">
+        <Label htmlFor="title" className="text-xs font-bold text-text-muted uppercase tracking-wider">
+          {t("Título do negócio")}
+        </Label>
+        <Input
+          id="title"
+          className="font-medium text-sm h-9"
+          {...form.register("title", { required: true, minLength: 2 })}
+        />
       </div>
+
+      {/* 2. Campos do Funil (Veículo, Bagageiro, Acessórios em largura total, Modalidade, CEP, Endereço, etc.) */}
+      {camposDoPerfil.length > 0 && (
+        <div className="space-y-3 pt-1">
+          <CustomFieldsEditor
+            fields={camposDoPerfil}
+            value={customFields}
+            onChange={handleCustomFieldsChange}
+            mode="lead"
+            leadId={lead.id}
+          />
+        </div>
+      )}
+
+      {/* 3. Observações / Detalhes da necessidade (Campo único de texto amplo) */}
+      <div className="space-y-2 pt-2 border-t border-border">
+        <Label
+          htmlFor="detalhesDaNecessidade"
+          className="text-xs font-bold text-text-muted uppercase tracking-wider"
+        >
+          {t("Detalhes da necessidade")}
+        </Label>
+        <Textarea
+          id="detalhesDaNecessidade"
+          rows={4}
+          placeholder={t("Observações, requisitos específicos do cliente, preferências de entrega…")}
+          className="text-sm leading-relaxed"
+          {...form.register("detalhesDaNecessidade")}
+        />
+      </div>
+
+      {/* 4. Tags do Negócio */}
+      <div className="space-y-2 pt-2 border-t border-border">
+        <Label className="text-xs font-bold text-text-muted uppercase tracking-wider">
+          {t("Tags do negócio")}
+        </Label>
+        <ContactTagsEditor
+          entityType="lead"
+          entityId={lead.id}
+          pipelineId={pipelineId}
+          orgId={org?.orgId ?? ""}
+          tags={lead.tags ?? []}
+        />
+      </div>
+
+      {/* Botões opcionais no próprio formulário */}
+      {mostrarBotoesAcao && (
+        <div className="flex justify-end gap-2 pt-3 border-t border-border">
+          {onCancel && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onCancel}
+              disabled={edit.isPending}
+            >
+              {t("Cancelar")}
+            </Button>
+          )}
+          <Button
+            type="submit"
+            disabled={edit.isPending}
+            className="bg-accent text-white hover:bg-accent/90"
+          >
+            {edit.isPending ? t("Salvando…") : t("Salvar alterações")}
+          </Button>
+        </div>
+      )}
     </form>
   );
 }

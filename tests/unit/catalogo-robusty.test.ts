@@ -3,7 +3,6 @@ import {
   obterModelosPorVeiculo,
   obterAcessoriosPorVeiculo,
   calcularOrcamentoProjeto,
-  CATALOGO_VEICULOS,
 } from "@/lib/robusty/catalogo";
 
 describe("Catálogo Oficial Robusty — Filtragem em Cascata e Cálculo de Preços", () => {
@@ -116,5 +115,34 @@ describe("Catálogo Oficial Robusty — Filtragem em Cascata e Cálculo de Preç
     });
     expect(orcamentoEntrega.frete_cents).toBe(1150);
     expect(orcamentoEntrega.frete_reais).toBe(11.5);
+  });
+
+  it("Aplica desconto corretamente em R$ (valor fixo) e em % (percentual sobre produtos)", () => {
+    // 1. Desconto fixo em reais (R$ 150,00)
+    const orcamentoDescontoFixo = calcularOrcamentoProjeto({
+      veiculo: "fiorino",
+      modelo_bagageiro: "fx_100", // R$ 2.200,00 (220000 cents)
+      modalidade_pretendida: "entrega",
+      valor_frete: 100, // R$ 100,00 (10000 cents)
+      tipo_desconto: "reais",
+      valor_desconto: 150, // R$ 150,00 (15000 cents)
+    });
+    expect(orcamentoDescontoFixo.total_produtos_cents).toBe(220000);
+    expect(orcamentoDescontoFixo.desconto_cents).toBe(15000);
+    expect(orcamentoDescontoFixo.desconto_reais).toBe(150);
+    expect(orcamentoDescontoFixo.total_geral_cents).toBe(215000); // 2200 + 100 - 150 = 2150 (R$ 2.150,00)
+
+    // 2. Desconto em percentual (10% sobre produtos de R$ 2.200,00 = R$ 220,00)
+    const orcamentoDescontoPct = calcularOrcamentoProjeto({
+      veiculo: "fiorino",
+      modelo_bagageiro: "fx_100",
+      modalidade_pretendida: "entrega",
+      valor_frete: 100,
+      tipo_desconto: "pct",
+      valor_desconto: 10, // 10%
+    });
+    expect(orcamentoDescontoPct.desconto_cents).toBe(22000); // 10% de 220000 = 22000 cents
+    expect(orcamentoDescontoPct.desconto_reais).toBe(220);
+    expect(orcamentoDescontoPct.total_geral_cents).toBe(208000); // 2200 + 100 - 220 = 2080 (R$ 2.080,00)
   });
 });

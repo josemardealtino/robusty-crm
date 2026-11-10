@@ -449,6 +449,10 @@ export interface ResumoOrcamentoRobusty {
   total_servicos_cents: number;
   total_geral_cents: number;
   total_geral_reais: number;
+  desconto_cents: number;
+  desconto_reais: number;
+  tipo_desconto: "reais" | "pct";
+  valor_desconto: number;
 }
 
 /**
@@ -534,13 +538,32 @@ export function calcularOrcamentoProjeto(
     frete_cents = Math.round(freteReais * 100);
   }
 
+  // 4. Desconto (em R$ ou em %)
+  const tipo_desconto: "reais" | "pct" = cf.tipo_desconto === "pct" ? "pct" : "reais";
+  let valor_desconto = 0;
+  if (typeof cf.valor_desconto === "number") {
+    valor_desconto = cf.valor_desconto;
+  } else if (typeof cf.valor_desconto === "string" && cf.valor_desconto.trim()) {
+    const num = Number(cf.valor_desconto.replace(",", "."));
+    if (!Number.isNaN(num)) valor_desconto = num;
+  }
+
   const total_produtos_cents =
     (bagageiro?.price_cents ?? 0) +
     acessorios.reduce((acc, curr) => acc + curr.price_cents, 0);
 
   const total_servicos_cents = (instalacao?.price_cents ?? 0) + frete_cents;
 
-  const total_geral_cents = total_produtos_cents + total_servicos_cents;
+  let desconto_cents = 0;
+  if (tipo_desconto === "pct") {
+    const pct = Math.min(100, Math.max(0, valor_desconto));
+    desconto_cents = Math.round((total_produtos_cents * pct) / 100);
+  } else {
+    desconto_cents = Math.round(Math.max(0, valor_desconto) * 100);
+  }
+
+  const total_sem_desconto_cents = total_produtos_cents + total_servicos_cents;
+  const total_geral_cents = Math.max(0, total_sem_desconto_cents - desconto_cents);
 
   return {
     veiculo: veiculoConfig ? { key: veiculoConfig.value, label: veiculoConfig.label } : null,
@@ -553,5 +576,9 @@ export function calcularOrcamentoProjeto(
     total_servicos_cents,
     total_geral_cents,
     total_geral_reais: total_geral_cents / 100,
+    desconto_cents,
+    desconto_reais: desconto_cents / 100,
+    tipo_desconto,
+    valor_desconto,
   };
 }

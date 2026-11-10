@@ -11,6 +11,8 @@ export const CHAVES_INTERNAS_DO_SISTEMA = new Set([
   "pedido_gerado_id",
   "pedido_pipeline_id",
   "meta_lead_submitted",
+  "valor_desconto",
+  "tipo_desconto",
 ]);
 
 /**

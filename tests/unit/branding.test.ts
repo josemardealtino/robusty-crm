@@ -1021,6 +1021,11 @@ const HOSTS_DECLARADOS: Record<string, EntradaDeHost> = {
     motivo:
       "endpoint padrão do canal parceiro que espelha a Cloud API (recorte do #1130), com override por DATAFY_API_BASE_URL. É o destino das chamadas de envio e de validação do token — e o canal só existe numa instalação que o liga (DATAFY_ENABLED).",
   },
+  "viacep.com.br": {
+    categoria: "FORNECEDOR",
+    motivo:
+      "endpoint da API pública e gratuita do ViaCEP para preenchimento automático de endereço e logradouro a partir do CEP brasileiro digitado no formulário de contato/lead.",
+  },
   // ── painel do fornecedor: texto de tela apontando para o endereço DELE ────
   "platform.openai.com": {
     categoria: "CONSOLE",
