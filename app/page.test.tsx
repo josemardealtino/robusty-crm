@@ -1,4 +1,3 @@
-import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cena = vi.hoisted(() => ({
@@ -20,42 +19,17 @@ vi.mock("@/lib/branding/saida", () => ({ marcaDaSaida: async () => ({ nome: "Mar
 
 import HomePage from "./page";
 
-async function montar() {
-  return render(await HomePage());
-}
-
 beforeEach(() => {
   cena.usuario = null;
 });
 
-describe("/ — a página inicial pública", () => {
-  // A verificação de um app que pede dados de conta Google abre o endereço
-  // principal SEM entrar. Antes, `/` era só um redirect para o painel e o
-  // revisor caía no login.
-  it("sem sessão: mostra o nome da marca, o que o produto faz e os links legais", async () => {
-    await montar();
-
-    expect(screen.getByRole("heading", { level: 1, name: "Marca da Revenda" })).toBeInTheDocument();
-    expect(screen.getByText(/Atendimento e vendas pelo WhatsApp/)).toBeInTheDocument();
-
-    const politica = screen
-      .getAllByRole("link", { name: "Política de Privacidade" })
-      .map((a) => a.getAttribute("href"));
-    expect(politica).toContain("/legal/privacy");
-    expect(screen.getByRole("link", { name: "Termos de Uso" })).toHaveAttribute(
-      "href",
-      "/legal/terms",
-    );
-    expect(screen.getByRole("link", { name: "Entrar" })).toHaveAttribute("href", "/login");
+describe("/ — a página inicial", () => {
+  it("sem sessão: redireciona para /login", async () => {
+    await expect(HomePage()).rejects.toThrow("NEXT_REDIRECT:/login");
   });
 
-  it("o nome vem da marca resolvida, não de texto fixo", async () => {
-    await montar();
-    expect(document.body.textContent).toContain("Marca da Revenda");
-  });
-
-  it("com sessão: segue direto para o painel, como sempre foi", async () => {
+  it("com sessão: segue direto para o painel /app", async () => {
     cena.usuario = { id: "11111111-1111-4111-8111-111111111111" };
-    await expect(montar()).rejects.toThrow("NEXT_REDIRECT:/app");
+    await expect(HomePage()).rejects.toThrow("NEXT_REDIRECT:/app");
   });
 });

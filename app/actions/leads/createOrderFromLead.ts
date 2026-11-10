@@ -11,6 +11,7 @@ import { supportWriteError } from "@/lib/impersonate/support";
 import { posicaoDeEntradaNaEtapa } from "@/lib/kanban/entrada-na-etapa";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { montarCamposDoPedido } from "@/lib/leads/criar-pedido-do-lead";
+import { sincronizarLeadComAgenda } from "@/lib/agenda/sincronizacao-lead-pedido";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -235,6 +236,11 @@ export async function createOrderFromLead(
       .eq("organization_id", org.orgId)
       .eq("id", leadId);
 
+    await sincronizarLeadComAgenda(admin, {
+      leadId: idExistente,
+      organizationId: org.orgId,
+    });
+
     revalidatePath(`/app/pipelines/${leadEfetivo.pipeline_id as string}`);
     revalidatePath(`/app/pipelines/${pedidosPipeline.id}`);
 
@@ -390,6 +396,11 @@ export async function createOrderFromLead(
       order_pipeline_id: pedidosPipeline.id,
       commercial_id: orderCommercialId,
     },
+  });
+
+  await sincronizarLeadComAgenda(admin, {
+    leadId: orderId,
+    organizationId: org.orgId,
   });
 
   revalidatePath(`/app/pipelines/${leadEfetivo.pipeline_id as string}`);

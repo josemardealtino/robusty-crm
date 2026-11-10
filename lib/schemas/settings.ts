@@ -176,6 +176,7 @@ export const customFieldSchema = z.object({
     "number",
     "currency",
     "date",
+    "time",
     "select",
     "multiselect",
     "searchable_select",

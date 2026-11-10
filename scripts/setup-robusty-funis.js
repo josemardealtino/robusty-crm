@@ -343,6 +343,30 @@ async function main() {
       mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
     },
     {
+      key: 'data_coleta_despacho',
+      label: 'Data de coleta / despacho',
+      type: 'date',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
+    },
+    {
+      key: 'horario_coleta_despacho',
+      label: 'Horário da coleta / despacho',
+      type: 'time',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
+    },
+    {
+      key: 'data_instalacao',
+      label: 'Data da instalação',
+      type: 'date',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'instalacao_loja' }
+    },
+    {
+      key: 'horario_instalacao',
+      label: 'Horário da instalação',
+      type: 'time',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'instalacao_loja' }
+    },
+    {
       key: 'forma_pagamento',
       label: 'Forma de pagamento',
       type: 'select',
@@ -596,6 +620,12 @@ async function main() {
       mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'transportadora' }
     },
     {
+      key: 'horario_coleta_despacho',
+      label: 'Horário da coleta / despacho',
+      type: 'time',
+      mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'transportadora' }
+    },
+    {
       key: 'previsao_entrega',
       label: 'Previsão/data de entrega',
       type: 'date',
@@ -617,7 +647,7 @@ async function main() {
     {
       key: 'horario_instalacao',
       label: 'Horário da instalação',
-      type: 'text',
+      type: 'time',
       mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'instalacao_loja' }
     },
     {

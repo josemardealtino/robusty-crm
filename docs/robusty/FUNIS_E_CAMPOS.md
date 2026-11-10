@@ -48,13 +48,25 @@ Este documento consolida as regras de negócio, etapas, dicionário de campos pe
     - Opções: Não necessária, Pendente, Em andamento, Concluída.
 12. **Valor do frete (`valor_frete`)**: `currency`
     - Condicional: exibido quando `modalidade_pretendida == transportadora`.
-13. **Forma de pagamento (`forma_pagamento`)**: `select`
+13. **Data de coleta / despacho (`data_coleta_despacho`)**: `date`
+    - Condicional: exibido quando `modalidade_pretendida == transportadora`.
+14. **Horário de coleta / despacho (`horario_coleta_despacho`)**: `time`
+    - Tipo nativo com seletor de horários de 00:00 a 23:30 (passo de 30 min).
+    - Condicional: exibido quando `modalidade_pretendida == transportadora`.
+    - Sincronização: alimenta a agenda automaticamente como *Coleta Transportadora*.
+15. **Data da instalação (`data_instalacao`)**: `date`
+    - Condicional: exibido quando `modalidade_pretendida == instalacao_loja`.
+16. **Horário da instalação (`horario_instalacao`)**: `time`
+    - Tipo nativo com seletor de horários de 00:00 a 23:30 (passo de 30 min).
+    - Condicional: exibido quando `modalidade_pretendida == instalacao_loja`.
+    - Sincronização: alimenta a agenda automaticamente como *Instalação na Loja (Oficina SP)*.
+17. **Forma de pagamento (`forma_pagamento`)**: `select`
     - Opções: Pix (`pix`), Cartão (`cartao`), Transferência (`transferencia`), Outro (`outro`).
     - Validação: Obrigatório para fechar como *Venda ganha*.
-14. **Status do pagamento (`status_pagamento`)**: `select`
+18. **Status do pagamento (`status_pagamento`)**: `select`
     - Opções: Pendente (`pendente`), Em conferência (`em_conferencia`), Confirmado (`confirmado`), Não aprovado (`nao_aprovado`).
     - Validação: Obrigatório para fechar como *Venda ganha*.
-15. **Motivo de ganho (`motivo_ganho`)**: `select`
+19. **Motivo de ganho (`motivo_ganho`)**: `select`
     - Opções: Atendimento rápido, Qualidade e resistência do produto, Preço e condições de pagamento, Disponibilidade / Instalação na loja, Indicação / Reputação da marca, Outro motivo.
 
 ---
@@ -92,12 +104,13 @@ Este documento consolida as regras de negócio, etapas, dicionário de campos pe
    - Endereço de entrega (`endereco_entrega`): `textarea`
    - Transportadora (`transportadora`): `text`
    - Data de coleta / despacho (`data_coleta_despacho`): `date`
+   - Horário de coleta / despacho (`horario_coleta_despacho`): `time` (00:00 às 23:30, sincroniza com agenda)
    - Previsão/data de entrega (`previsao_entrega`): `date`
    - Código/link de rastreamento (`codigo_rastreamento`): `text`
 9. **Campos Condicionais de Instalação na Loja:**
    - Data da instalação (`data_instalacao`): `date`
-   - Horário da instalação (`horario_instalacao`): `text`
-   - Local e responsável pela instalação (`local_responsavel_instalacao`): `text`
+   - Horário da instalação (`horario_instalacao`): `time` (00:00 às 23:30, sincroniza com agenda)
+   - Local e responsável pela instalação (`local_responsavel_instalacao`): `text` (ex: Box 1, Box 2)
 10. **Confirmação de entrega/instalação (`confirmacao_entrega_instalacao`)**: `select`
     - Opções: Pendente, Confirmado pelo cliente, Comprovante anexado, Instalação concluída na loja.
     - Validação: Obrigatório ao concluir pedido.

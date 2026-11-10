@@ -54,7 +54,20 @@
 
 ---
 
-## 5. Pontos Pendentes de Homologação Comercial
+## 6. Módulo de Agenda, Horários e Acesso da Loja Física (Novembro/2026)
+
+| Funcionalidade | Status | Detalhes Técnicos |
+| :--- | :---: | :--- |
+| **Tipo de Campo `time` (Horário)** | **Implementado e ativo** | Adicionado ao schema (`customFieldSchema`), rótulos (`rotulos-do-campo.ts`) e editor (`CustomFieldsEditor.tsx`). Exibe combobox/select com 48 opções de 30 em 30 minutos (00:00 até 23:30). |
+| **Campos de Agendamento nos Funis** | **Configurado no Supabase** | `data_coleta_despacho` (`date`), `horario_coleta_despacho` (`time`), `data_instalacao` (`date`) e `horario_instalacao` (`time`) configurados nos pipelines Leads e Pedidos com exibição condicional. |
+| **Configuração da Agenda** | **Ativo no Supabase** | Tipos de agendamento: `Instalação na Loja (Oficina SP)` (slug: `instalacao-loja`) e `Coleta Transportadora` (slug: `coleta-transportadora`). Horários de atendimento configurados: Seg-Sex 08:00–18:00 e Sáb 08:00–16:00 (editáveis via `attendant_availability` e `organizations.settings.agenda`). |
+| **Sincronização Automática Lead/Pedido ➔ Agenda** | **Implementado e testado** | `lib/agenda/sincronizacao-lead-pedido.ts`: ao preencher/atualizar data e horário de instalação ou coleta (via atualização de lead ou conversão em pedido), o sistema cria/atualiza o compromisso em `calendar_appointments` e o vínculo polimórfico em `crm_lead_links` (`target_kind: 'appointment'`). O compromisso contém o ID Comercial ROB, nome do cliente, veículo, modelo do bagageiro, acessórios ou transportadora/endereço. |
+| **Acesso Exclusivo da Loja Física** | **Criado no Supabase Auth + RLS** | Usuário `loja@robusty.com.br` com perfil `viewer` e `interface_settings.destinos = ["/app/agenda"]`. O menu lateral exibe apenas o atalho da Agenda, permitindo que a equipe da oficina visualize todos os agendamentos com os detalhes do lead/pedido. |
+
+---
+
+## 7. Pontos Pendentes de Homologação Comercial
 - Lista exata e final de modelos compatíveis por veículo (Ducato, Saveiro, etc.) a ser revisada após uso pela equipe de vendas.
 - Lista final de status de emissão fiscal e regras de NF-e com o Igor.
 - Regra de fechamento: pagamento confirmado (implementado no funil Leads conforme o desenho mais recente).
+

@@ -34,6 +34,8 @@ describe("Identificador Único Comercial de Leads (P01 / Robusty)", () => {
     custom_fields: {},
     tags: ["vip"],
     created_by_user_id: null,
+    assigned_at: null,
+    last_activity_at: null,
   };
 
   it("buildCardInput preserva commercialId do lead para exibição no card", () => {

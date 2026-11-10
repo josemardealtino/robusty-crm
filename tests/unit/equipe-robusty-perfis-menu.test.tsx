@@ -35,7 +35,7 @@ vi.mock("@/components/shell/VersionFooter", () => ({
 }));
 
 export const PERFIS_ROBUSTY: Record<
-  "admin_ti" | "joao_ricardo" | "norlando" | "igor",
+  "admin_ti" | "joao_ricardo" | "norlando" | "igor" | "loja",
   {
     role: ActiveOrg["role"];
     isPlatformAdmin: boolean;
@@ -94,6 +94,16 @@ export const PERFIS_ROBUSTY: Record<
         "/app/kanban",
         "/app/contacts",
         "/app/tasks",
+      ],
+    },
+  },
+  loja: {
+    role: "viewer",
+    isPlatformAdmin: false,
+    interface_settings: {
+      preset: "completa",
+      destinos: [
+        "/app/agenda",
       ],
     },
   },
@@ -180,6 +190,24 @@ describe("Perfis de acesso e visualização da equipe Robusty", () => {
 
     expect(screen.queryByRole("link", { name: /Radar/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /Respostas rápidas/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Configurações/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Ajuda/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Agentes/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Conexões/ })).toBeNull();
+  });
+
+  it("Loja Física (loja@robusty.com.br) vê apenas a Agenda, sem CRM, Inbox, IA ou Configurações", () => {
+    configurarPerfil("loja");
+    render(<Sidebar collapsed={false} />);
+
+    const titulos = screen.getAllByRole("heading").map((el) => el.textContent?.trim());
+    expect(titulos).toEqual(["Atendimento"]);
+
+    expect(screen.getByRole("link", { name: /Agenda/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Inbox/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Funis/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Contatos/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Tarefas/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /Configurações/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /Ajuda/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /Agentes/ })).toBeNull();

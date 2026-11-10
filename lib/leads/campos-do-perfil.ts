@@ -270,6 +270,11 @@ export const CAMPOS_CONHECIDOS_DO_PERFIL: Record<string, CustomFieldDef> = {
     label: "Data de coleta / despacho",
     type: "date",
   },
+  horario_coleta_despacho: {
+    key: "horario_coleta_despacho",
+    label: "Horário da coleta / despacho",
+    type: "time",
+  },
   previsao_entrega: {
     key: "previsao_entrega",
     label: "Previsão/data de entrega",
@@ -288,7 +293,7 @@ export const CAMPOS_CONHECIDOS_DO_PERFIL: Record<string, CustomFieldDef> = {
   horario_instalacao: {
     key: "horario_instalacao",
     label: "Horário da instalação",
-    type: "text",
+    type: "time",
   },
   local_responsavel_instalacao: {
     key: "local_responsavel_instalacao",

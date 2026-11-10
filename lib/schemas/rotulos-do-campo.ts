@@ -23,6 +23,7 @@ export const ROTULOS_DO_TIPO: Record<CustomFieldDef["type"], string> = {
   number: "Número",
   currency: "Moeda (BRL)",
   date: "Data",
+  time: "Horário",
   select: "Lista de uma escolha",
   multiselect: "Lista de várias escolhas",
   searchable_select: "Lista pesquisável",

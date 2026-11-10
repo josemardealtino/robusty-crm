@@ -2,6 +2,7 @@ import { guardServiceEffect } from "@/lib/atendimento/fronteira-server";
 import { observeServiceOrigin } from "@/lib/atendimento/origem";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { idsDeContatosPessoais } from "@/app/api/v1/conversations/_handler";
+import { sincronizarLeadComAgenda } from "@/lib/agenda/sincronizacao-lead-pedido";
 /**
  * Core handlers para /api/v1/leads.
  *
@@ -1142,6 +1143,12 @@ export async function updateLeadHandler(
     // concorrência as duas coisas diferem, e é a do banco que vale.
     (updated as Record<string, unknown>).custom_fields =
       (mesclados as Record<string, unknown> | null) ?? {};
+
+    // Sincronizar automaticamente agendamento no calendário caso haja data/hora de coleta ou instalação
+    await sincronizarLeadComAgenda(createAdminClient(), {
+      leadId,
+      organizationId: ctx.organization_id,
+    });
   }
 
   const a = actorAuditPayload(ctx.actor);

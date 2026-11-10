@@ -40,6 +40,7 @@ export type CustomFieldType =
   | "number"
   | "currency"
   | "date"
+  | "time"
   | "select"
   | "multiselect"
   | "searchable_select"
@@ -48,6 +49,12 @@ export type CustomFieldType =
   | "phone"
   | "url"
   | "file";
+
+export const OPCOES_DE_HORARIOS: string[] = Array.from({ length: 48 }, (_, i) => {
+  const horas = Math.floor(i / 2).toString().padStart(2, "0");
+  const minutos = i % 2 === 0 ? "00" : "30";
+  return `${horas}:${minutos}`;
+});
 
 export interface CustomFieldDef {
   key: string;
@@ -262,6 +269,28 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
                   onChange={(e) => set(f.key, e.target.value)}
                   disabled={disabled}
                 />
+              </div>
+            );
+          case "time":
+            return (
+              <div key={f.key} className="space-y-2">
+                {labelEl}
+                <Select
+                  value={typeof v === "string" ? v : ""}
+                  onValueChange={(val) => set(f.key, val)}
+                  disabled={disabled}
+                >
+                  <SelectTrigger id={id}>
+                    <SelectValue placeholder={t("Selecione o horário…")} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-56">
+                    {OPCOES_DE_HORARIOS.map((hora) => (
+                      <SelectItem key={hora} value={hora}>
+                        {hora}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             );
           case "select":

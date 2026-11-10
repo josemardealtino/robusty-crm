@@ -92,6 +92,20 @@ const PERFIS = {
       ],
     },
   },
+  loja: {
+    email: "loja@robusty.com.br",
+    legacyEmails: ["oficina@robusty.com.br", "loja@grupomixfer.com.br"],
+    fullName: "Loja Física (Oficina SP)",
+    role: "viewer",
+    isPlatformAdmin: false,
+    keepExistingPassword: false,
+    interface_settings: {
+      preset: "completa",
+      destinos: [
+        "/app/agenda",
+      ],
+    },
+  },
 };
 
 async function run() {
