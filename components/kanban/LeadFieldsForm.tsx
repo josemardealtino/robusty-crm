@@ -21,6 +21,8 @@ import { ContactTagsEditor } from "@/components/inbox/ContactTagsEditor";
 import { lerRecorrenciaDoFormulario } from "@/lib/leads/valor-recorrente";
 import { EcoDoValor } from "./EcoDoValor";
 import type { CampoConfirmadoDoDocumento } from "./RevisaoDoDocumento";
+import { ResumoOrcamentoProjeto } from "./ResumoOrcamentoProjeto";
+import { calcularOrcamentoProjeto } from "@/lib/robusty/catalogo";
 
 /**
  * As etiquetas do negócio SAÍRAM deste formulário (#2979): quem as edita é o
@@ -207,10 +209,13 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
       return;
     }
 
+    const orcamento = calcularOrcamentoProjeto(customFields);
+    const valueCentsFinal = valueCents ?? (orcamento.total_geral_cents > 0 ? orcamento.total_geral_cents : null);
+
     const patch: Record<string, unknown> = {
       title: values.title.trim(),
       description: values.description.trim() ? values.description.trim() : null,
-      value_cents: valueCents,
+      value_cents: valueCentsFinal,
       ...leitura.trio,
       expected_close_date: values.expected_close_date || null,
       // Só o que a pessoa alterou (issue #2132) — o merge continua do servidor.
@@ -361,6 +366,14 @@ export function LeadFieldsForm({ lead, pipelineId, fieldDefs = [], onSaved, onCa
               onChange={setCustomFields}
               mode="lead"
               leadId={lead.id}
+            />
+            <ResumoOrcamentoProjeto
+              customFields={customFields}
+              moeda={moedaDoValor}
+              className="mt-3"
+              onAtualizarValorTotal={(totalCents) => {
+                form.setValue("valueReais", (totalCents / 100).toFixed(2).replace(".", ","));
+              }}
             />
           </div>
         )}

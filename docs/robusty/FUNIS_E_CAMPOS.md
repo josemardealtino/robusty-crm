@@ -31,9 +31,11 @@ Este documento consolida as regras de negócio, etapas, dicionário de campos pe
 4. **Ano / versão (`ano_versao`)**: `text`
 5. **Modelo do bagageiro (`modelo_bagageiro`)**: `searchable_select`
    - Condicional: exibido quando `produto == bagageiro`.
-   - Opções: MX 100, MX 100 Plus, MX 200 Plus, MX 80 Plus, MX 50 Plus, KX 100, KX 200, KX 200 Nova, FX 100, FX 200, DX 100, DX 200, MX 120, Aba dupla, Extreme, Outro / A definir.
+   - **Filtro dinâmico por veículo**: filtra automaticamente as opções compatíveis com o veículo selecionado (ex: Kombi exibe MX 100, MX 100 Plus, MX 200 Plus, MX 80 Plus, MX 50 Plus; Fiorino exibe FX 100, FX 200; Saveiro exibe Aba dupla, Extreme, etc.), já exibindo o preço de tabela formatado.
 6. **Acessórios adicionais (`acessorios_adicionais`)**: `searchable_select` (`multiple: true`)
-   - Opções: Escada removível Kombi, Escada Jumpy / Expert / Scudo, Deck completo, Meio deck, Deck para escada, Suporte de estepe, Base para toldo, Base para toldo Leroy, Suporte de escada com guia de rolete, Par de ventosas, Haste de fixação, Kit de hastes, Kit de fixação para escada, Barra para placa solar, Guia de rolete Saveiro, Instalação, Instalação com rebite, Corte para climatizador.
+   - **Filtro dinâmico por veículo com nomes limpos**: exibe apenas os acessórios compatíveis com o veículo selecionado, com nomes simplificados e preço (ex: "Escada", "Guia de rolete", "Deck MX 80", "Suporte de estepe", etc.).
+   - Suporta retrocompatibilidade transparente com aliases salvos anteriormente.
+   - Alimenta automaticamente o totalizador de orçamento do projeto.
 7. **Detalhes da necessidade (`detalhes_da_necessidade`)**: `textarea`
 8. **Modalidade pretendida (`modalidade_pretendida`)**: `select`
    - Opções: Transportadora (`transportadora`), Instalação na loja (`instalacao_loja`), A definir (`a_definir`).

@@ -33,6 +33,10 @@ import { camposVisiveis, type MostrarQuando } from "@/lib/schemas/mostrar-quando
 import { mensagemDoCampo } from "@/lib/leads/padrao-do-campo";
 
 import { FileUploadCustomField } from "@/components/kanban/FileUploadCustomField";
+import {
+  obterModelosPorVeiculo,
+  obterAcessoriosPorVeiculo,
+} from "@/lib/robusty/catalogo";
 
 export type CustomFieldType =
   | "text"
@@ -97,6 +101,33 @@ interface Props {
   leadId?: string;
 }
 
+function obterOpcoesDoCampo(
+  f: CustomFieldDef,
+  value: Record<string, unknown>,
+): Array<{ value: string; label: string }> {
+  if (f.key === "modelo_bagageiro") {
+    const veiculo = typeof value.veiculo === "string" ? value.veiculo : null;
+    if (veiculo) {
+      const modelos = obterModelosPorVeiculo(veiculo);
+      return modelos.map((m) => ({
+        value: m.value,
+        label: `${m.label}${m.price_cents > 0 ? ` — R$ ${(m.price_cents / 100).toFixed(2).replace(".", ",")}` : ""}`,
+      }));
+    }
+  }
+  if (f.key === "acessorios_adicionais") {
+    const veiculo = typeof value.veiculo === "string" ? value.veiculo : null;
+    if (veiculo) {
+      const acessorios = obterAcessoriosPorVeiculo(veiculo);
+      return acessorios.map((a) => ({
+        value: a.value,
+        label: `${a.label}${a.price_cents > 0 ? ` — R$ ${(a.price_cents / 100).toFixed(2).replace(".", ",")}` : ""}`,
+      }));
+    }
+  }
+  return f.options ?? [];
+}
+
 export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, className, leadId }: Props) {
   const t = useT();
   const [rascunhosDeMoeda, setRascunhosDeMoeda] = useState<Record<string, string>>({});
@@ -139,6 +170,25 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
   // O campo de moeda na moeda da organização (`lib/leads/campo-de-moeda.ts`).
   const moedaDoCampo = org?.currency ?? MOEDA_PADRAO;
   function set(key: string, v: unknown) {
+    if (key === "veiculo" && typeof v === "string") {
+      const next: Record<string, unknown> = { ...value, [key]: v };
+      // Limpar modelo de bagageiro incompatível com o novo veículo selecionado
+      if (v) {
+        const modelosValidos = obterModelosPorVeiculo(v).map((m) => m.value);
+        if (next.modelo_bagageiro && !modelosValidos.includes(next.modelo_bagageiro as string)) {
+          next.modelo_bagageiro = "";
+        }
+        // Filtrar acessórios mantendo apenas os compatíveis com o novo veículo
+        const acessoriosValidos = obterAcessoriosPorVeiculo(v).map((a) => a.value);
+        if (Array.isArray(next.acessorios_adicionais)) {
+          next.acessorios_adicionais = (next.acessorios_adicionais as string[]).filter((a) =>
+            acessoriosValidos.includes(a),
+          );
+        }
+      }
+      onChange(next);
+      return;
+    }
     onChange({ ...value, [key]: v });
   }
 
@@ -293,7 +343,8 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
                 </Select>
               </div>
             );
-          case "select":
+          case "select": {
+            const opcoes = obterOpcoesDoCampo(f, value);
             return (
               <div key={f.key} className="space-y-2">
                 {labelEl}
@@ -306,7 +357,7 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
                     <SelectValue placeholder={t("Selecione…")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {f.options?.map((o) => (
+                    {opcoes.map((o) => (
                       <SelectItem key={o.value} value={o.value}>
                         {o.label}
                       </SelectItem>
@@ -315,13 +366,15 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
                 </Select>
               </div>
             );
+          }
           case "multiselect": {
             const current = Array.isArray(v) ? (v as string[]) : [];
+            const opcoes = obterOpcoesDoCampo(f, value);
             return (
               <div key={f.key} className="space-y-2">
                 {labelEl}
                 <div className="flex flex-col gap-1">
-                  {f.options?.map((o) => {
+                  {opcoes.map((o) => {
                     const checked = current.includes(o.value);
                     return (
                       <label key={o.value} className="flex items-center gap-2 text-sm">
@@ -350,7 +403,7 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
             // "maceio-al"), nunca a grafia digitada — é o que faz o filtro e o
             // relatório de "Maceió" voltarem a bater. `allow_new` deixa passar
             // um valor novo, aparado, quando o funil o permite.
-            const opcoes = f.options ?? [];
+            const opcoes = obterOpcoesDoCampo(f, value);
             // O MODO MÚLTIPLO da lista pesquisável (#3182): o registro é uma
             // LISTA de `value` canônicos e o que já foi escolhido aparece em
             // CHIPS, um por opção. No valor único o registro continua a string

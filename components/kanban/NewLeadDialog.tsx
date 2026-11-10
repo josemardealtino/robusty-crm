@@ -49,6 +49,8 @@ import { SeletorDeContato } from "./SeletorDeContato";
 import { Gear, CaretUp, CaretDown, Eye, EyeSlash } from "@/lib/ui/icons";
 import { CAMPOS_PADRAO_DISPONIVEIS, obterListaOrdenadaDeCampos } from "@/app/app/settings/tenant/pipelines/_new-lead-form";
 import { updatePipelineConfig } from "@/app/actions/settings/updatePipelineConfig";
+import { ResumoOrcamentoProjeto } from "./ResumoOrcamentoProjeto";
+import { calcularOrcamentoProjeto } from "@/lib/robusty/catalogo";
 
 interface FormShape {
   title: string;
@@ -445,8 +447,9 @@ export function NewLeadDialog({
     };
     const idDoContato = contactId ?? contato?.id ?? null;
     if (idDoContato) payload.contact_id = idDoContato;
-    if (values.description.trim()) payload.description = values.description.trim();
-    if (valueCents !== null) payload.value_cents = valueCents;
+    const orcamento = calcularOrcamentoProjeto(camposDoNegocio);
+    const valueCentsFinal = valueCents ?? (orcamento.total_geral_cents > 0 ? orcamento.total_geral_cents : null);
+    if (valueCentsFinal !== null) payload.value_cents = valueCentsFinal;
     if (leitura.trio.recurring_value_cents !== null) {
       payload.recurring_value_cents = leitura.trio.recurring_value_cents;
       payload.recurring_period = leitura.trio.recurring_period;
@@ -894,6 +897,14 @@ export function NewLeadDialog({
               }
             })}
           </div>
+
+          <ResumoOrcamentoProjeto
+            customFields={camposDoNegocio}
+            moeda={moedaDoValor}
+            onAtualizarValorTotal={(totalCents) => {
+              form.setValue("valueReais", (totalCents / 100).toFixed(2).replace(".", ","));
+            }}
+          />
 
           {faltandoNaEtapa.length > 0 && (
             <p role="alert" className="text-xs text-error-fg">

@@ -260,6 +260,9 @@ async function main() {
         { value: 'mx_120', label: 'MX 120' },
         { value: 'aba_dupla', label: 'Aba dupla' },
         { value: 'extreme', label: 'Extreme' },
+        { value: 'ducato_aba_lateral', label: 'Ducato Aba Lateral' },
+        { value: 'saveiro_cs', label: 'Bagageiro Saveiro Cabine Simples' },
+        { value: 'saveiro_cd', label: 'Bagageiro Saveiro Cabine Dupla' },
         { value: 'outro_a_definir', label: 'Outro / A definir' }
       ],
       mostrar_quando: { campo: 'produto', operador: 'igual', valor: 'bagageiro' }
@@ -271,11 +274,14 @@ async function main() {
       multiple: true,
       allow_new: true,
       options: [
+        { value: 'escada', label: 'Escada' },
         { value: 'escada_kombi', label: 'Escada removível Kombi' },
         { value: 'escada_jumpy_expert_scudo', label: 'Escada Jumpy / Expert / Scudo' },
         { value: 'deck_completo', label: 'Deck completo' },
         { value: 'meio_deck', label: 'Meio deck' },
-        { value: 'deck_escada', label: 'Deck para escada' },
+        { value: 'deck_mx80', label: 'Deck para MX 80 Plus' },
+        { value: 'deck_mx50', label: 'Deck para MX 50 Plus' },
+        { value: 'deck_escada', label: 'Deck nos degraus da escada' },
         { value: 'suporte_estepe', label: 'Suporte de estepe' },
         { value: 'base_toldo', label: 'Base para toldo' },
         { value: 'base_toldo_leroy', label: 'Base para toldo Leroy' },
@@ -285,6 +291,7 @@ async function main() {
         { value: 'kit_hastes', label: 'Kit de hastes' },
         { value: 'kit_fixacao_escada', label: 'Kit de fixação para escada' },
         { value: 'barra_placa_solar', label: 'Barra para placa solar' },
+        { value: 'guia_rolete', label: 'Guia de rolete' },
         { value: 'guia_rolete_saveiro', label: 'Guia de rolete Saveiro' },
         { value: 'instalacao_simples', label: 'Instalação' },
         { value: 'instalacao_rebite', label: 'Instalação com rebite' },

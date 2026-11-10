@@ -66,7 +66,19 @@
 
 ---
 
-## 7. Pontos Pendentes de Homologação Comercial
+## 8. Catálogo Técnico, Filtro em Cascata e Precificação Dinâmica (Fevereiro/2026)
+
+| Funcionalidade | Status | Detalhes Técnicos |
+| :--- | :---: | :--- |
+| **Módulo Central do Catálogo** | **Implementado e ativo** | `lib/robusty/catalogo.ts`: concentra especificações, medidas, preços de tabela (em centavos), compatibilidades de bagageiros e acessórios por veículo (Kombi, Kangoo, Fiorino, Doblò, Jumpy/Expert/Scudo, Ducato, Saveiro CS/CD, etc.) e serviços. |
+| **Filtro em Cascata por Veículo** | **Implementado na UI** | `CustomFieldsEditor.tsx`: ao selecionar o veículo, os seletores de `modelo_bagageiro` e `acessorios_adicionais` carregam exclusivamente as opções compatíveis com o carro selecionado, despoluindo a lista (ex: "Escada" em vez de "Escada da Kombi", "Guia de rolete" em vez de "Guia de rolete Saveiro"). Se o usuário trocar o veículo, itens incompatíveis previamente selecionados são limpos automaticamente. |
+| **Cálculo de Orçamento em Tempo Real** | **Implementado na UI** | `ResumoOrcamentoProjeto.tsx`: exibe em destaque o valor somado de Bagageiro + Acessórios + Instalação/Frete. Integrado em `LeadFieldsForm.tsx` (dossiê) e `NewLeadDialog.tsx` (criação). |
+| **Sincronização com o Valor do Lead/Card** | **Implementado e ativo** | O total calculado alimenta e sincroniza o campo nativo `value_cents` do lead, tornando o valor do projeto visível diretamente nos cards do Kanban e relatórios financeiros. |
+| **Retrocompatibilidade de Dados** | **Garantido** | Aliases legados (ex: `escada_kombi`, `guia_rolete_saveiro`) continuam sendo interpretados e precificados corretamente sem quebrar leads já cadastrados. |
+
+---
+
+## 9. Pontos Pendentes de Homologação Comercial
 - Lista exata e final de modelos compatíveis por veículo (Ducato, Saveiro, etc.) a ser revisada após uso pela equipe de vendas.
 - Lista final de status de emissão fiscal e regras de NF-e com o Igor.
 - Regra de fechamento: pagamento confirmado (implementado no funil Leads conforme o desenho mais recente).
