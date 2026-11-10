@@ -8,6 +8,11 @@ import type { NextConfig } from "next";
  *  - Initial bundle /app/inbox < 250KB gzipped
  */
 const nextConfig: NextConfig = {
+  typescript: {
+    // Typecheck rigoroso já é garantido por `pnpm typecheck` no CI e no desenvolvimento.
+    // Ignorar no next build do Docker evita estouro de memória (OOM) em VPS de 4GB.
+    ignoreBuildErrors: true,
+  },
   // Self-host: gera .next/standalone pro container Docker (node server.js) — é
   // o que o estágio `runner` do Dockerfile copia, então é o modo de build deste
   // repositório. O ramo de `process.env.VERCEL` é resíduo defensivo, não um modo
