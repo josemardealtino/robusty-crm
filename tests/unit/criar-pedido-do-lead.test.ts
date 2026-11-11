@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { mesclarCamposDoPerfil } from "@/lib/leads/campos-do-perfil";
 import { gerarResumoProdutosDoPedido, montarCamposDoPedido } from "@/lib/leads/criar-pedido-do-lead";
+import { calcularOrcamentoProjeto } from "@/lib/robusty/catalogo";
 import { camposVisiveis } from "@/lib/schemas/mostrar-quando";
 
 describe("Persistência de campos no perfil do lead e conversão para Pedido", () => {
@@ -126,5 +127,38 @@ describe("Persistência de campos no perfil do lead e conversão para Pedido", (
     expect(resumo).toBe(
       "Produto: Bagageiro | Modelo: FX 200 | Veículo: Fiat Fiorino (2022 Endurance) | Acessórios adicionais: Suporte de escada com guia de rolete",
     );
+  });
+
+  it("monta endereco_entrega completo a partir de campos desmembrados", () => {
+    const lead = {
+      id: "aaaa1111-bbbb-2222-cccc-333333333333",
+      pipeline_id: "9f77c2ce-08cc-4ac7-a2f0-48f4ce9d8732",
+      commercial_id: "ROB-2026-000042",
+      custom_fields: {
+        endereco: "Rua das Flores",
+        numero: "123",
+        complemento: "Galpão A",
+        bairro: "Centro",
+        cidade: "São Paulo",
+        estado: "SP",
+      },
+    };
+
+    const campos = montarCamposDoPedido(lead);
+    expect(campos.endereco_entrega).toBe("Rua das Flores, nº 123, Galpão A, Centro, São Paulo/SP");
+  });
+
+  it("calcula orçamento com fallback para modelos ou acessórios do catálogo geral", () => {
+    const orcamento = calcularOrcamentoProjeto({
+      veiculo: "saveiro",
+      modelo_bagageiro: "aba_dupla",
+      tipo_precificacao: "tabelado",
+      acessorios_adicionais: ["par_ventosas"],
+    });
+
+    expect(orcamento.bagageiro).not.toBeNull();
+    expect(orcamento.bagageiro?.key).toBe("aba_dupla");
+    expect(orcamento.acessorios.length).toBeGreaterThanOrEqual(1);
+    expect(orcamento.total_geral_cents).toBeGreaterThan(0);
   });
 });

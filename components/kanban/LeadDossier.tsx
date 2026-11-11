@@ -324,7 +324,7 @@ export function LeadDossier({
     try {
       const rascunho = formulario.current?.obterRascunhoAtual?.();
       const res = await createOrderFromLead({
-        leadId: lead.id,
+        leadId: leadOrigemId || lead.id,
         currentDraft: rascunho,
       });
       if (!res.ok) {
@@ -338,7 +338,7 @@ export function LeadDossier({
       });
       if (res.alreadyExists) {
         toast.success(
-          t("Pedido existente atualizado com os dados atuais") +
+          t("Dados sincronizados com sucesso entre Lead e Pedido") +
             (res.commercialId ? ` (${res.commercialId})` : ""),
         );
       } else {
@@ -348,7 +348,7 @@ export function LeadDossier({
         );
       }
     } catch {
-      toast.error(t("Não foi possível criar o pedido."));
+      toast.error(t("Não foi possível sincronizar o pedido."));
     } finally {
       setCriandoPedido(false);
     }
@@ -897,30 +897,47 @@ export function LeadDossier({
             {/* Botão CRIAR PEDIDO posicionado logo abaixo do orçamento */}
             <div className="rounded-xl border border-border bg-surface p-3.5 shadow-2xs">
               {leadOrigemId ? (
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2 text-text">
-                    <ShoppingCart size={15} className="shrink-0 text-accent" />
-                    <span>
-                      {t("Pedido originado do lead")}{" "}
-                      {lead.commercial_id && (
-                        <strong className="font-mono text-accent">
-                          {lead.commercial_id}
-                        </strong>
-                      )}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-text">
+                      <ShoppingCart size={15} className="shrink-0 text-accent" />
+                      <span>
+                        {t("Pedido originado do lead")}{" "}
+                        {lead.commercial_id && (
+                          <strong className="font-mono text-accent">
+                            {lead.commercial_id}
+                          </strong>
+                        )}
+                      </span>
+                    </div>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
+                      {t("Espelhado")}
                     </span>
                   </div>
-                  {pipelineOrigemId && (
-                    <a
-                      href={`/app/pipelines/${pipelineOrigemId}?lead=${leadOrigemId}`}
-                      className="inline-flex items-center gap-1 font-semibold text-accent hover:underline"
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleCriarPedido()}
+                      disabled={criandoPedido}
+                      className="flex-1 text-xs"
                     >
-                      <span>{t("Ver lead")}</span>
-                      <ArrowRight size={12} />
-                    </a>
-                  )}
+                      {criandoPedido ? t("Sincronizando…") : t("Sincronizar dados")}
+                    </Button>
+                    {pipelineOrigemId && (
+                      <a
+                        href={`/app/pipelines/${pipelineOrigemId}?lead=${leadOrigemId}`}
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text hover:bg-surface-elevated shadow-2xs"
+                      >
+                        <span>{t("Ver lead")}</span>
+                        <ArrowRight size={12} />
+                      </a>
+                    )}
+                  </div>
                 </div>
               ) : pedidoGerado ? (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2 text-text">
                       <CheckCircle size={15} className="shrink-0 text-emerald-600" />
@@ -933,6 +950,9 @@ export function LeadDossier({
                         )}
                       </span>
                     </div>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
+                      {t("Espelhado")}
+                    </span>
                   </div>
                   <div className="flex gap-2">
                     <Button

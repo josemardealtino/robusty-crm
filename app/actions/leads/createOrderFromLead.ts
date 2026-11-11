@@ -11,6 +11,10 @@ import { supportWriteError } from "@/lib/impersonate/support";
 import { posicaoDeEntradaNaEtapa } from "@/lib/kanban/entrada-na-etapa";
 import { emitLeadActivity } from "@/lib/leads/activity-emitter";
 import { montarCamposDoPedido } from "@/lib/leads/criar-pedido-do-lead";
+import {
+  localizarUsuarioIgor,
+  sincronizarEspelhoLeadPedido,
+} from "@/lib/leads/espelhamento-lead-pedido";
 import { sincronizarLeadComAgenda } from "@/lib/agenda/sincronizacao-lead-pedido";
 import { logger } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -206,21 +210,29 @@ export async function createOrderFromLead(
     const camposAtuaisDoPedido =
       (pedidoExistente.custom_fields as Record<string, unknown> | null) ?? {};
 
-    // Mescla novos dados do lead sem sobrescrever campos operacionais já preenchidos no pedido
+    // Mescla novos dados do lead sem perder campos operacionais já preenchidos no pedido
     const camposSincronizados: Record<string, unknown> = {
-      ...camposNovosDoPedido,
       ...camposAtuaisDoPedido,
+      ...camposNovosDoPedido,
     };
+
+    const igorUserId = await localizarUsuarioIgor(admin, org.orgId);
+    const patchPedidoExistente: Record<string, unknown> = {
+      title: leadEfetivo.title as string,
+      description: (leadEfetivo.description as string | null) ?? null,
+      value_cents: (leadEfetivo.value_cents as number | null) ?? null,
+      custom_fields: camposSincronizados,
+      updated_at: new Date().toISOString(),
+    };
+    if (!pedidoExistente.owner_user_id && igorUserId) {
+      patchPedidoExistente.owner_user_id = igorUserId;
+      patchPedidoExistente.owner_kind = "user";
+      patchPedidoExistente.assigned_at = new Date().toISOString();
+    }
 
     await admin
       .from("crm_leads")
-      .update({
-        title: leadEfetivo.title as string,
-        description: (leadEfetivo.description as string | null) ?? null,
-        value_cents: (leadEfetivo.value_cents as number | null) ?? null,
-        custom_fields: camposSincronizados,
-        updated_at: new Date().toISOString(),
-      })
+      .update(patchPedidoExistente)
       .eq("organization_id", org.orgId)
       .eq("id", idExistente);
 
@@ -235,6 +247,12 @@ export async function createOrderFromLead(
       })
       .eq("organization_id", org.orgId)
       .eq("id", leadId);
+
+    // Sincronização espelhada bidirecional completa
+    await sincronizarEspelhoLeadPedido(admin, {
+      leadId,
+      organizationId: org.orgId,
+    });
 
     await sincronizarLeadComAgenda(admin, {
       leadId: idExistente,
@@ -269,6 +287,9 @@ export async function createOrderFromLead(
   );
 
   // 7. Inserir novo Pedido preservando o mesmo commercial_id (ROB-2026-XXXXXX)
+  // Atribui automaticamente ao Igor como responsável operacional no funil de Pedidos.
+  const igorUserId = await localizarUsuarioIgor(admin, org.orgId);
+
   const { data: novoPedido, error: insErr } = await admin
     .from("crm_leads")
     .insert({
@@ -284,10 +305,10 @@ export async function createOrderFromLead(
       recurring_period: (leadEfetivo.recurring_period as "monthly" | null) ?? null,
       recurring_months: (leadEfetivo.recurring_months as number | null) ?? null,
       currency: (leadEfetivo.currency as string | null) ?? "BRL",
-      owner_user_id: (leadEfetivo.owner_user_id as string | null) ?? null,
-      owner_agent_id: (leadEfetivo.owner_agent_id as string | null) ?? null,
-      owner_kind: (leadEfetivo.owner_kind as string | null) ?? null,
-      assigned_at: (leadEfetivo.assigned_at as string | null) ?? null,
+      owner_user_id: igorUserId ?? null,
+      owner_agent_id: null,
+      owner_kind: igorUserId ? "user" : null,
+      assigned_at: igorUserId ? new Date().toISOString() : null,
       expected_close_date: (leadEfetivo.expected_close_date as string | null) ?? null,
       tags: (leadEfetivo.tags as string[] | null) ?? [],
       source: (leadEfetivo.source as string | null) ?? "manual",
@@ -396,6 +417,12 @@ export async function createOrderFromLead(
       order_pipeline_id: pedidosPipeline.id,
       commercial_id: orderCommercialId,
     },
+  });
+
+  // Sincronização espelhada bidirecional completa Lead ↔ Pedido
+  await sincronizarEspelhoLeadPedido(admin, {
+    leadId,
+    organizationId: org.orgId,
   });
 
   await sincronizarLeadComAgenda(admin, {

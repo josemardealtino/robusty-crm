@@ -101,10 +101,14 @@ export function montarCamposDoPedido(leadOrigem: {
       origem.modalidade_pretendida === "instalacao_loja")
   ) {
     resultado.modalidade_entrega = origem.modalidade_pretendida;
+  } else if (!valorEstaPreenchido(resultado.modalidade_pretendida) && valorEstaPreenchido(origem.modalidade_entrega)) {
+    resultado.modalidade_pretendida = origem.modalidade_entrega;
   }
 
   if (!valorEstaPreenchido(resultado.cep_entrega) && valorEstaPreenchido(origem.cep)) {
     resultado.cep_entrega = origem.cep;
+  } else if (!valorEstaPreenchido(resultado.cep) && valorEstaPreenchido(origem.cep_entrega)) {
+    resultado.cep = origem.cep_entrega;
   }
 
   if (
@@ -112,6 +116,28 @@ export function montarCamposDoPedido(leadOrigem: {
     valorEstaPreenchido(origem.detalhes_da_necessidade)
   ) {
     resultado.observacoes_operacionais = origem.detalhes_da_necessidade;
+  } else if (
+    !valorEstaPreenchido(resultado.detalhes_da_necessidade) &&
+    valorEstaPreenchido(origem.observacoes_operacionais)
+  ) {
+    resultado.detalhes_da_necessidade = origem.observacoes_operacionais;
+  }
+
+  if (!valorEstaPreenchido(resultado.endereco_entrega)) {
+    const partesEnd: string[] = [];
+    if (valorEstaPreenchido(origem.endereco)) partesEnd.push(String(origem.endereco).trim());
+    if (valorEstaPreenchido(origem.numero)) partesEnd.push(`nº ${origem.numero}`);
+    if (valorEstaPreenchido(origem.complemento)) partesEnd.push(String(origem.complemento).trim());
+    if (valorEstaPreenchido(origem.bairro)) partesEnd.push(String(origem.bairro).trim());
+    if (valorEstaPreenchido(origem.cidade)) {
+      const cidUf = valorEstaPreenchido(origem.estado)
+        ? `${origem.cidade}/${origem.estado}`
+        : String(origem.cidade);
+      partesEnd.push(cidUf);
+    }
+    if (partesEnd.length > 0) {
+      resultado.endereco_entrega = partesEnd.join(", ");
+    }
   }
 
   if (!valorEstaPreenchido(resultado.produtos_servicos_pedido)) {

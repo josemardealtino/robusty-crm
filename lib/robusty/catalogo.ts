@@ -471,7 +471,11 @@ export function calcularOrcamentoProjeto(
   if (modeloKey) {
     // Buscar no veículo selecionado ou no catálogo geral
     const modelosPossiveis = veiculoConfig ? veiculoConfig.modelos : obterModelosPorVeiculo(null);
-    const encontrado = modelosPossiveis.find((m) => m.value === modeloKey);
+    let encontrado = modelosPossiveis.find((m) => m.value === modeloKey);
+    // Fallback: se não estiver na sublista específica do veículo, busca em todos os modelos
+    if (!encontrado && veiculoConfig) {
+      encontrado = obterModelosPorVeiculo(null).find((m) => m.value === modeloKey);
+    }
     if (encontrado) {
       bagageiro = {
         key: encontrado.value,
@@ -490,6 +494,7 @@ export function calcularOrcamentoProjeto(
 
   const acessorios: ResumoOrcamentoRobusty["acessorios"] = [];
   const acessoriosPossiveis = veiculoConfig ? veiculoConfig.acessorios : obterAcessoriosPorVeiculo(null);
+  const todosAcessoriosGeral = obterAcessoriosPorVeiculo(null);
 
   const ALIASES_ACESSORIOS: Record<string, string> = {
     escada_kombi: "escada",
@@ -499,7 +504,11 @@ export function calcularOrcamentoProjeto(
 
   for (const aKey of acessoriosKeys) {
     const keyNormalizada = ALIASES_ACESSORIOS[aKey] ?? aKey;
-    const encontrado = acessoriosPossiveis.find((a) => a.value === keyNormalizada || a.value === aKey);
+    let encontrado = acessoriosPossiveis.find((a) => a.value === keyNormalizada || a.value === aKey);
+    // Fallback: se não estiver na sublista específica do veículo, busca em todos os acessórios
+    if (!encontrado) {
+      encontrado = todosAcessoriosGeral.find((a) => a.value === keyNormalizada || a.value === aKey);
+    }
     if (encontrado) {
       acessorios.push({
         key: encontrado.value,

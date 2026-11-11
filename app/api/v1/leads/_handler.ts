@@ -3,6 +3,7 @@ import { observeServiceOrigin } from "@/lib/atendimento/origem";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { idsDeContatosPessoais } from "@/app/api/v1/conversations/_handler";
 import { sincronizarLeadComAgenda } from "@/lib/agenda/sincronizacao-lead-pedido";
+import { sincronizarEspelhoLeadPedido } from "@/lib/leads/espelhamento-lead-pedido";
 /**
  * Core handlers para /api/v1/leads.
  *
@@ -1276,6 +1277,12 @@ export async function updateLeadHandler(
   // o `updated_at` de novo. Devolver `updated` entregava ao quadro um carimbo
   // que a própria edição já invalidou: `useEditLead` o grava no cache, e o
   // arrasto seguinte levava 409 mesmo com o conserto do cliente.
+  // Sincronização automática e bidirecional do espelho Lead ↔ Pedido (Robusty)
+  await sincronizarEspelhoLeadPedido(createAdminClient(), {
+    leadId,
+    organizationId: existing.organization_id,
+  });
+
   const { data: fresh } = await supabase
     .from("crm_leads")
     .select(LEAD_COLS)

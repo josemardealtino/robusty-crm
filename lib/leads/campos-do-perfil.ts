@@ -146,36 +146,45 @@ export const CAMPOS_CONHECIDOS_DO_PERFIL: Record<string, CustomFieldDef> = {
     key: "cep",
     label: "CEP",
     type: "text",
+    padrao: "^\\d{5}-?\\d{3}$",
+    mensagem_padrao: "Digite o CEP com 8 dígitos, ex: 03525-150",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   endereco: {
     key: "endereco",
     label: "Endereço",
     type: "text",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   numero: {
     key: "numero",
     label: "Número",
     type: "text",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   complemento: {
     key: "complemento",
     label: "Complemento",
     type: "text",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   bairro: {
     key: "bairro",
     label: "Bairro",
     type: "text",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   cidade: {
     key: "cidade",
     label: "Cidade",
     type: "text",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   estado: {
     key: "estado",
     label: "Estado (UF)",
     type: "text",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   tipo_precificacao: {
     key: "tipo_precificacao",
@@ -196,11 +205,13 @@ export const CAMPOS_CONHECIDOS_DO_PERFIL: Record<string, CustomFieldDef> = {
       { value: "em_andamento", label: "Em andamento" },
       { value: "concluida", label: "Concluída" },
     ],
+    mostrar_quando: { campo: "tipo_precificacao", operador: "igual", valor: "cotacao_especial" },
   },
   valor_frete: {
     key: "valor_frete",
     label: "Valor do frete",
     type: "currency",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   forma_pagamento: {
     key: "forma_pagamento",
@@ -258,6 +269,7 @@ export const CAMPOS_CONHECIDOS_DO_PERFIL: Record<string, CustomFieldDef> = {
     key: "numero_nota_fiscal",
     label: "Número da nota fiscal",
     type: "text",
+    mostrar_quando: { campo: "status_nota_fiscal", operador: "igual", valor: "emitida" },
   },
   observacoes_operacionais: {
     key: "observacoes_operacionais",
@@ -273,51 +285,63 @@ export const CAMPOS_CONHECIDOS_DO_PERFIL: Record<string, CustomFieldDef> = {
     key: "cep_entrega",
     label: "CEP de entrega",
     type: "text",
+    padrao: "^\\d{5}-?\\d{3}$",
+    mensagem_padrao: "Digite o CEP com 8 dígitos, ex: 03525-150",
+    mostrar_quando: { campo: "modalidade_entrega", operador: "igual", valor: "transportadora" },
   },
   endereco_entrega: {
     key: "endereco_entrega",
     label: "Endereço de entrega",
     type: "textarea",
+    mostrar_quando: { campo: "modalidade_entrega", operador: "igual", valor: "transportadora" },
   },
   transportadora: {
     key: "transportadora",
     label: "Transportadora",
     type: "text",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   data_coleta_despacho: {
     key: "data_coleta_despacho",
     label: "Data de coleta / despacho",
     type: "date",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   horario_coleta_despacho: {
     key: "horario_coleta_despacho",
     label: "Horário da coleta / despacho",
     type: "time",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   previsao_entrega: {
     key: "previsao_entrega",
     label: "Previsão/data de entrega",
     type: "date",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   codigo_rastreamento: {
     key: "codigo_rastreamento",
     label: "Código/link de rastreamento",
     type: "text",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "transportadora" },
   },
   data_instalacao: {
     key: "data_instalacao",
     label: "Data da instalação",
     type: "date",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "instalacao_loja" },
   },
   horario_instalacao: {
     key: "horario_instalacao",
     label: "Horário da instalação",
     type: "time",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "instalacao_loja" },
   },
   local_responsavel_instalacao: {
     key: "local_responsavel_instalacao",
     label: "Local e responsável pela instalação",
     type: "text",
+    mostrar_quando: { campo: "modalidade_pretendida", operador: "igual", valor: "instalacao_loja" },
   },
   confirmacao_entrega_instalacao: {
     key: "confirmacao_entrega_instalacao",
@@ -357,6 +381,44 @@ function inferirTipoDoValor(valor: unknown): CustomFieldType {
 }
 
 /**
+ * Ordem canônica completa dos campos do ciclo de vida Robusty.
+ * Garante que em qualquer dos dois funis (Leads ou Pedidos) a equipe veja
+ * exatamente os mesmos campos na mesma ordem estruturada.
+ */
+export const ORDEM_CAMPOS_CICLO_ROBUSTY: string[] = [
+  "veiculo",
+  "ano_versao",
+  "produto",
+  "modelo_bagageiro",
+  "tipo_de_acessorio",
+  "acessorios_adicionais",
+  "modalidade_pretendida",
+  "cep",
+  "endereco",
+  "numero",
+  "complemento",
+  "bairro",
+  "cidade",
+  "estado",
+  "transportadora",
+  "codigo_rastreamento",
+  "data_coleta_despacho",
+  "horario_coleta_despacho",
+  "previsao_entrega",
+  "data_instalacao",
+  "horario_instalacao",
+  "local_responsavel_instalacao",
+  "confirmacao_entrega_instalacao",
+  "status_nota_fiscal",
+  "numero_nota_fiscal",
+  "tipo_precificacao",
+  "status_cotacao",
+  "valor_frete",
+  "forma_pagamento",
+  "status_pagamento",
+];
+
+/**
  * Mescla as definições de campos do funil atual com quaisquer campos já
  * preenchidos no registro (vindos de outras etapas ou de outro funil, como na
  * conversão Lead → Pedido).
@@ -365,39 +427,103 @@ function inferirTipoDoValor(valor: unknown): CustomFieldType {
  * 1. Todo campo que JÁ possui valor preenchido tem sua restrição `mostrar_quando`
  *    removida na visualização do perfil, garantindo que nenhum dado preenchido
  *    desapareça ao mudar de etapa ou condição.
- * 2. Todo campo presente e preenchido em `valoresAtuais` que não pertença às
- *    definições do funil atual (ex.: campos comerciais do funil Leads quando o
- *    registro está no funil Pedidos) é preservado e exibido no perfil com seu
- *    rótulo e tipo originais.
+ * 2. Em registros que possuem campos conhecidos da Robusty (ou funis de Leads/Pedidos),
+ *    disponibiliza toda a esteira do ciclo comercial e operacional para que
+ *    qualquer pessoa (vendas ou logística) possa preencher ou atualizar dados
+ *    conforme os recebe.
+ * 3. Campos customizados arbitrários pré-existentes são preservados no formulário.
  */
 export function mesclarCamposDoPerfil(
   definicoesDoFunil: readonly CustomFieldDef[],
   valoresAtuais: Record<string, unknown> | null | undefined,
 ): CustomFieldDef[] {
-  const valores = valoresAtuais ?? {};
-  const chavesDoFunil = new Set<string>();
-  const resultado: CustomFieldDef[] = [];
+  const valores = { ...(valoresAtuais ?? {}) };
 
+  // Harmonização de chaves sinônimas na leitura
+  if (valorEstaPreenchido(valores.modalidade_entrega) && !valorEstaPreenchido(valores.modalidade_pretendida)) {
+    valores.modalidade_pretendida = valores.modalidade_entrega;
+  } else if (valorEstaPreenchido(valores.modalidade_pretendida) && !valorEstaPreenchido(valores.modalidade_entrega)) {
+    valores.modalidade_entrega = valores.modalidade_pretendida;
+  }
+  if (valorEstaPreenchido(valores.cep_entrega) && !valorEstaPreenchido(valores.cep)) {
+    valores.cep = valores.cep_entrega;
+  } else if (valorEstaPreenchido(valores.cep) && !valorEstaPreenchido(valores.cep_entrega)) {
+    valores.cep_entrega = valores.cep;
+  }
+
+  const chavesDoFunil = new Set<string>();
+  const mapaResultado = new Map<string, CustomFieldDef>();
+
+  // 1. Processar definições passadas pelo funil
   for (const def of definicoesDoFunil) {
     chavesDoFunil.add(def.key);
     if (valorEstaPreenchido(valores[def.key]) && def.mostrar_quando !== undefined) {
-      resultado.push({ ...def, mostrar_quando: undefined });
+      mapaResultado.set(def.key, { ...def, mostrar_quando: undefined });
     } else {
-      resultado.push(def);
+      mapaResultado.set(def.key, def);
     }
   }
 
+  const CHAVES_SINONIMAS: Record<string, string> = {
+    modalidade_entrega: "modalidade_pretendida",
+    modalidade_pretendida: "modalidade_entrega",
+    cep_entrega: "cep",
+    cep: "cep_entrega",
+    observacoes_operacionais: "detalhes_da_necessidade",
+    detalhes_da_necessidade: "observacoes_operacionais",
+  };
+
+  // 2. Se for funil/lead com campos do negócio Robusty, garantir a esteira do ciclo de vida
+  const ehNegocioRobusty =
+    chavesDoFunil.has("veiculo") ||
+    chavesDoFunil.has("modalidade_entrega") ||
+    chavesDoFunil.has("produtos_servicos_pedido") ||
+    valorEstaPreenchido(valores.veiculo) ||
+    valorEstaPreenchido(valores.lead_origem_id) ||
+    valorEstaPreenchido(valores.pedido_gerado_id) ||
+    valorEstaPreenchido(valores.referencia_venda);
+
+  if (ehNegocioRobusty) {
+    for (const chave of ORDEM_CAMPOS_CICLO_ROBUSTY) {
+      if (CHAVES_INTERNAS_DO_SISTEMA.has(chave)) continue;
+      const sinonimo = CHAVES_SINONIMAS[chave];
+      if (sinonimo && mapaResultado.has(sinonimo)) continue;
+
+      const defConhecida = CAMPOS_CONHECIDOS_DO_PERFIL[chave];
+      if (!defConhecida) continue;
+
+      const jaExiste = mapaResultado.get(chave);
+      if (jaExiste) {
+        if (valorEstaPreenchido(valores[chave])) {
+          mapaResultado.set(chave, { ...jaExiste, mostrar_quando: undefined });
+        }
+      } else {
+        // Se ainda não estava nas definições do funil atual (ex: campos comerciais no funil de Pedidos),
+        // inclui a definição conhecida para que o card seja completo e espelhado
+        if (valorEstaPreenchido(valores[chave])) {
+          mapaResultado.set(chave, { ...defConhecida, mostrar_quando: undefined });
+        } else {
+          mapaResultado.set(chave, defConhecida);
+        }
+      }
+    }
+  }
+
+  // 3. Incluir quaisquer outros campos presentes em valoresAtuais
   for (const chave of Object.keys(valores)) {
-    if (chavesDoFunil.has(chave) || CHAVES_INTERNAS_DO_SISTEMA.has(chave)) continue;
+    if (mapaResultado.has(chave) || CHAVES_INTERNAS_DO_SISTEMA.has(chave)) continue;
+    const sinonimo = CHAVES_SINONIMAS[chave];
+    if (sinonimo && mapaResultado.has(sinonimo)) continue;
+
     const valor = valores[chave];
     if (!valorEstaPreenchido(valor)) continue;
 
     const conhecido = CAMPOS_CONHECIDOS_DO_PERFIL[chave];
     if (conhecido) {
-      resultado.push({ ...conhecido, mostrar_quando: undefined });
+      mapaResultado.set(chave, { ...conhecido, mostrar_quando: undefined });
     } else {
       const tipo = inferirTipoDoValor(valor);
-      resultado.push({
+      mapaResultado.set(chave, {
         key: chave,
         label: formatarRotuloDeChave(chave),
         type: tipo,
@@ -406,5 +532,27 @@ export function mesclarCamposDoPerfil(
     }
   }
 
-  return resultado;
+  // Se for Robusty, ordenar os campos prioritariamente pela ORDEM_CAMPOS_CICLO_ROBUSTY
+  if (ehNegocioRobusty) {
+    const ordenados: CustomFieldDef[] = [];
+    const chavesOrdenadas = new Set<string>();
+
+    for (const chave of ORDEM_CAMPOS_CICLO_ROBUSTY) {
+      const item = mapaResultado.get(chave);
+      if (item) {
+        ordenados.push(item);
+        chavesOrdenadas.add(chave);
+      }
+    }
+
+    for (const [chave, item] of mapaResultado.entries()) {
+      if (!chavesOrdenadas.has(chave)) {
+        ordenados.push(item);
+      }
+    }
+
+    return ordenados;
+  }
+
+  return Array.from(mapaResultado.values());
 }
