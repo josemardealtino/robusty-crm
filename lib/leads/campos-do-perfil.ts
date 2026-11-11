@@ -21,6 +21,7 @@ export const CHAVES_INTERNAS_DO_SISTEMA = new Set([
   "referencia_venda",
   "produtos_servicos_pedido",
   "observacoes_operacionais",
+  "tipo_de_acessorio",
 ]);
 
 /**
@@ -399,7 +400,6 @@ export const ORDEM_CAMPOS_CICLO_ROBUSTY: string[] = [
   "ano_versao",
   "produto",
   "modelo_bagageiro",
-  "tipo_de_acessorio",
   "acessorios_adicionais",
   "tipo_precificacao",
   "status_cotacao",

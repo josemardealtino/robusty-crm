@@ -17,7 +17,6 @@ import { MOEDA_PADRAO } from "@/lib/money";
 import { mesclarCamposDoPerfil } from "@/lib/leads/campos-do-perfil";
 import { soChavesAlteradas } from "@/lib/leads/custom-fields-so-diff";
 import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
-import { ContactTagsEditor } from "@/components/inbox/ContactTagsEditor";
 import { lerRecorrenciaDoFormulario } from "@/lib/leads/valor-recorrente";
 import type { CampoConfirmadoDoDocumento } from "./RevisaoDoDocumento";
 import { calcularOrcamentoProjeto } from "@/lib/robusty/catalogo";
@@ -281,19 +280,6 @@ export function LeadFieldsForm({
         />
       </div>
 
-      {/* 4. Tags do Negócio */}
-      <div className="space-y-2 pt-2 border-t border-border">
-        <Label className="text-xs font-bold text-text-muted uppercase tracking-wider">
-          {t("Tags do negócio")}
-        </Label>
-        <ContactTagsEditor
-          entityType="lead"
-          entityId={lead.id}
-          pipelineId={pipelineId}
-          orgId={org?.orgId ?? ""}
-          tags={lead.tags ?? []}
-        />
-      </div>
 
       {/* Botões opcionais no próprio formulário */}
       {mostrarBotoesAcao && (

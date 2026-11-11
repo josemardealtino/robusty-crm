@@ -253,21 +253,6 @@ async function main() {
       mostrar_quando: { campo: 'produto', operador: 'igual', valor: 'bagageiro' }
     },
     {
-      key: 'tipo_de_acessorio',
-      label: 'Tipo de acessório',
-      type: 'select',
-      options: [
-        { value: 'escada', label: 'Escada' },
-        { value: 'deck', label: 'Deck de madeira' },
-        { value: 'suporte_estepe', label: 'Suporte de estepe' },
-        { value: 'base_toldo', label: 'Base de toldo' },
-        { value: 'ventosas_hastes', label: 'Ventosas e hastes de fixação' },
-        { value: 'guia_rolete', label: 'Guia de rolete' },
-        { value: 'outro', label: 'Outro acessório' }
-      ],
-      mostrar_quando: { campo: 'produto', operador: 'igual', valor: 'outros_acessorios' }
-    },
-    {
       key: 'acessorios_adicionais',
       label: 'Acessórios adicionais',
       type: 'searchable_select',
@@ -461,7 +446,6 @@ async function main() {
       { key: 'ano_versao', label: 'Ano / versão', visible: true, is_standard: false },
       { key: 'produto', label: 'Produto', visible: true, is_standard: false },
       { key: 'modelo_bagageiro', label: 'Modelo do bagageiro', visible: true, is_standard: false },
-      { key: 'tipo_de_acessorio', label: 'Tipo de acessório', visible: true, is_standard: false },
       { key: 'acessorios_adicionais', label: 'Acessórios adicionais', visible: true, is_standard: false },
       { key: 'detalhes_da_necessidade', label: 'Detalhes da necessidade', visible: false, is_standard: false },
       { key: 'modalidade_pretendida', label: 'Modalidade pretendida', visible: false, is_standard: false },

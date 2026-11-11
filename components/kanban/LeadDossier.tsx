@@ -17,7 +17,6 @@ import {
   Tag as TagIcon,
   Check,
   PencilSimple,
-  Plus,
   X,
 } from "@/lib/ui/icons";
 
@@ -111,10 +110,9 @@ export function LeadDossier({
 
   const nomeContato = lead.title || t("Lead");
 
-  // Estados sincronizados para contato (telefone, e-mail) e tags
+  // Estados sincronizados para contato (telefone, e-mail)
   const [emailContato, setEmailContato] = useState(lead.contact_email || "");
   const [telefoneContato, setTelefoneContato] = useState(lead.contact_phone || "");
-  const [tagsAtuais, setTagsAtuais] = useState<string[]>(lead.tags || []);
 
   const [editandoEmail, setEditandoEmail] = useState(false);
   const [novoEmailInput, setNovoEmailInput] = useState("");
@@ -124,14 +122,9 @@ export function LeadDossier({
   const [novoTelefoneInput, setNovoTelefoneInput] = useState("");
   const [salvandoTelefone, setSalvandoTelefone] = useState(false);
 
-  const [inserindoTag, setInserindoTag] = useState(false);
-  const [novaTagInput, setNovaTagInput] = useState("");
-  const [salvandoTag, setSalvandoTag] = useState(false);
-
   useEffect(() => {
     setEmailContato(lead.contact_email || "");
     setTelefoneContato(lead.contact_phone || "");
-    setTagsAtuais(lead.tags || []);
 
     if (lead.contact_id && !lead.contact_email) {
       void fetch(`/api/v1/contacts/${lead.contact_id}`)
@@ -195,60 +188,6 @@ export function LeadDossier({
       toast.error(t("Não foi possível atualizar o telefone."));
     } finally {
       setSalvandoTelefone(false);
-    }
-  }
-
-  async function handleAdicionarTag(tagParaAdicionar?: string) {
-    const tag = (tagParaAdicionar ?? novaTagInput).trim();
-    if (!tag) return;
-    if (tagsAtuais.includes(tag)) {
-      toast.info(t("Tag já adicionada"));
-      setNovaTagInput("");
-      setInserindoTag(false);
-      return;
-    }
-    const novasTags = [...tagsAtuais, tag];
-    setSalvandoTag(true);
-    try {
-      const res = await fetch(`/api/v1/leads/${lead.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tags: novasTags }),
-      });
-      if (res.ok) {
-        setTagsAtuais(novasTags);
-        setNovaTagInput("");
-        setInserindoTag(false);
-        toast.success(t("Tag adicionada"));
-      } else {
-        toast.error(t("Não foi possível adicionar a tag."));
-      }
-    } catch {
-      toast.error(t("Não foi possível adicionar a tag."));
-    } finally {
-      setSalvandoTag(false);
-    }
-  }
-
-  async function handleRemoverTag(tagParaRemover: string) {
-    const novasTags = tagsAtuais.filter((t) => t !== tagParaRemover);
-    setSalvandoTag(true);
-    try {
-      const res = await fetch(`/api/v1/leads/${lead.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tags: novasTags }),
-      });
-      if (res.ok) {
-        setTagsAtuais(novasTags);
-        toast.success(t("Tag removida"));
-      } else {
-        toast.error(t("Não foi possível remover a tag."));
-      }
-    } catch {
-      toast.error(t("Não foi possível remover a tag."));
-    } finally {
-      setSalvandoTag(false);
     }
   }
 
@@ -683,70 +622,6 @@ export function LeadDossier({
                     </option>
                   ))}
               </select>
-            </div>
-
-            {/* Pílulas de Tags do Lead no Cabeçalho */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <TagIcon size={12} className="text-text-muted shrink-0" />
-              {tagsAtuais.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1 rounded-md bg-accent/10 border border-accent/20 px-2 py-0.5 text-[11px] font-medium text-accent"
-                >
-                  <span>{tag}</span>
-                  <button
-                    type="button"
-                    onClick={() => void handleRemoverTag(tag)}
-                    disabled={salvandoTag}
-                    title={t("Remover tag")}
-                    className="text-accent/60 hover:text-accent transition ml-0.5"
-                  >
-                    <X size={10} />
-                  </button>
-                </span>
-              ))}
-              {inserindoTag ? (
-                <div className="inline-flex items-center gap-1 rounded-md border border-accent bg-surface px-1.5 py-0.5 text-xs">
-                  <Input
-                    value={novaTagInput}
-                    onChange={(e) => setNovaTagInput(e.target.value)}
-                    placeholder={t("Nova tag...")}
-                    className="h-5 w-24 px-1 text-xs"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") void handleAdicionarTag();
-                      if (e.key === "Escape") setInserindoTag(false);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void handleAdicionarTag()}
-                    disabled={salvandoTag}
-                    className="text-emerald-600 hover:text-emerald-700 p-0.5"
-                    title={t("Adicionar")}
-                  >
-                    <Check size={11} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInserindoTag(false)}
-                    className="text-text-muted hover:text-text p-0.5"
-                    title={t("Cancelar")}
-                  >
-                    <X size={11} />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setInserindoTag(true)}
-                  className="inline-flex items-center gap-1 rounded-md border border-dashed border-border-strong bg-surface/60 hover:bg-surface px-1.5 py-0.5 text-[11px] text-text-muted hover:text-text transition"
-                  title={t("Adicionar tag")}
-                >
-                  <Plus size={10} />
-                  <span>{t("Tag")}</span>
-                </button>
-              )}
             </div>
 
             {/* Data de Criação e Canal */}
