@@ -1,7 +1,7 @@
 "use client";
 
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ArrowRight,
@@ -15,13 +15,20 @@ import {
   EnvelopeSimple,
   Clock,
   Tag as TagIcon,
+  Check,
+  PencilSimple,
+  Plus,
+  X,
 } from "@/lib/ui/icons";
 
 import { createOrderFromLead } from "@/app/actions/leads/createOrderFromLead";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useT } from "@/hooks/i18n/useT";
 import { useActiveOrg, usePermission, useUser } from "@/hooks/auth/AuthProvider";
 import { ROLE_RANK } from "@/lib/auth/types";
+import { formatCents } from "@/lib/money";
+import { calcularOrcamentoProjeto } from "@/lib/robusty/catalogo";
 import {
   Dialog,
   DialogContent,
@@ -103,12 +110,156 @@ export function LeadDossier({
   const podeConfirmarDoDocumento = podeEditarTarefas;
 
   const nomeContato = lead.title || t("Lead");
-  const telefoneContato = lead.contact_phone || "";
+
+  // Estados sincronizados para contato (telefone, e-mail) e tags
+  const [emailContato, setEmailContato] = useState(lead.contact_email || "");
+  const [telefoneContato, setTelefoneContato] = useState(lead.contact_phone || "");
+  const [tagsAtuais, setTagsAtuais] = useState<string[]>(lead.tags || []);
+
+  const [editandoEmail, setEditandoEmail] = useState(false);
+  const [novoEmailInput, setNovoEmailInput] = useState("");
+  const [salvandoEmail, setSalvandoEmail] = useState(false);
+
+  const [editandoTelefone, setEditandoTelefone] = useState(false);
+  const [novoTelefoneInput, setNovoTelefoneInput] = useState("");
+  const [salvandoTelefone, setSalvandoTelefone] = useState(false);
+
+  const [inserindoTag, setInserindoTag] = useState(false);
+  const [novaTagInput, setNovaTagInput] = useState("");
+  const [salvandoTag, setSalvandoTag] = useState(false);
+
+  useEffect(() => {
+    setEmailContato(lead.contact_email || "");
+    setTelefoneContato(lead.contact_phone || "");
+    setTagsAtuais(lead.tags || []);
+
+    if (lead.contact_id && !lead.contact_email) {
+      void fetch(`/api/v1/contacts/${lead.contact_id}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((json) => {
+          if (json?.data?.email) setEmailContato(json.data.email);
+          if (json?.data?.phone && !lead.contact_phone) setTelefoneContato(json.data.phone);
+        })
+        .catch(() => undefined);
+    }
+  }, [lead.id, lead.contact_id, lead.contact_email, lead.contact_phone, lead.tags]);
+
+  async function handleSalvarEmail() {
+    if (!lead.contact_id) {
+      toast.error(t("Este lead não possui contato vinculado."));
+      return;
+    }
+    const trimmed = novoEmailInput.trim();
+    setSalvandoEmail(true);
+    try {
+      const res = await fetch(`/api/v1/contacts/${lead.contact_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed || null }),
+      });
+      if (res.ok) {
+        setEmailContato(trimmed);
+        setEditandoEmail(false);
+        toast.success(t("E-mail atualizado"));
+      } else {
+        toast.error(t("Não foi possível atualizar o e-mail."));
+      }
+    } catch {
+      toast.error(t("Não foi possível atualizar o e-mail."));
+    } finally {
+      setSalvandoEmail(false);
+    }
+  }
+
+  async function handleSalvarTelefone() {
+    if (!lead.contact_id) {
+      toast.error(t("Este lead não possui contato vinculado."));
+      return;
+    }
+    const trimmed = novoTelefoneInput.trim();
+    setSalvandoTelefone(true);
+    try {
+      const res = await fetch(`/api/v1/contacts/${lead.contact_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: trimmed || null }),
+      });
+      if (res.ok) {
+        setTelefoneContato(trimmed);
+        setEditandoTelefone(false);
+        toast.success(t("Telefone atualizado"));
+      } else {
+        toast.error(t("Não foi possível atualizar o telefone."));
+      }
+    } catch {
+      toast.error(t("Não foi possível atualizar o telefone."));
+    } finally {
+      setSalvandoTelefone(false);
+    }
+  }
+
+  async function handleAdicionarTag(tagParaAdicionar?: string) {
+    const tag = (tagParaAdicionar ?? novaTagInput).trim();
+    if (!tag) return;
+    if (tagsAtuais.includes(tag)) {
+      toast.info(t("Tag já adicionada"));
+      setNovaTagInput("");
+      setInserindoTag(false);
+      return;
+    }
+    const novasTags = [...tagsAtuais, tag];
+    setSalvandoTag(true);
+    try {
+      const res = await fetch(`/api/v1/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: novasTags }),
+      });
+      if (res.ok) {
+        setTagsAtuais(novasTags);
+        setNovaTagInput("");
+        setInserindoTag(false);
+        toast.success(t("Tag adicionada"));
+      } else {
+        toast.error(t("Não foi possível adicionar a tag."));
+      }
+    } catch {
+      toast.error(t("Não foi possível adicionar a tag."));
+    } finally {
+      setSalvandoTag(false);
+    }
+  }
+
+  async function handleRemoverTag(tagParaRemover: string) {
+    const novasTags = tagsAtuais.filter((t) => t !== tagParaRemover);
+    setSalvandoTag(true);
+    try {
+      const res = await fetch(`/api/v1/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: novasTags }),
+      });
+      if (res.ok) {
+        setTagsAtuais(novasTags);
+        toast.success(t("Tag removida"));
+      } else {
+        toast.error(t("Não foi possível remover a tag."));
+      }
+    } catch {
+      toast.error(t("Não foi possível remover a tag."));
+    } finally {
+      setSalvandoTag(false);
+    }
+  }
 
   // Estado sincronizado de customFields para exibição imediata no orçamento lateral
   const [customFieldsAtuais, setCustomFieldsAtuais] = useState<Record<string, unknown>>(
     lead.custom_fields ?? {},
   );
+
+  const resumoOrcamentoAtual = useMemo(() => {
+    return calcularOrcamentoProjeto(customFieldsAtuais);
+  }, [customFieldsAtuais]);
 
   useEffect(() => {
     setCustomFieldsAtuais(lead.custom_fields ?? {});
@@ -250,8 +401,8 @@ export function LeadDossier({
         {/* BARRA SUPERIOR REORGANIZADA (NÍVEL 1 + NÍVEL 2)          */}
         {/* ======================================================== */}
         <header className="border-b border-border bg-gradient-to-b from-surface to-surface-elevated shrink-0">
-          {/* NÍVEL 1: Avatar, Nome, ID, Seletor de Etapa e Ações Rápidas */}
-          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-6 sm:py-3.5">
+          {/* NÍVEL 1: Avatar, Nome, ID, Seletor de Etapa e Ações Rápidas (com pr-14 para respiro do botão fechar X) */}
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-6 sm:py-3.5 pr-14 sm:pr-16">
             <div className="flex items-center gap-3.5 min-w-0">
               <div
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold text-white shadow-sm text-sm"
@@ -308,7 +459,7 @@ export function LeadDossier({
                   className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-bold text-accent-foreground shadow-sm hover:opacity-90 transition"
                 >
                   <ChatCircle size={14} />
-                  <span>{t("Abrir conversa no Inbox")}</span>
+                  <span>{t("Abrir conversa")}</span>
                   {lead.conversa.unread > 0 && (
                     <span className="ml-1 rounded-full bg-white/25 px-1.5 py-0.2 text-[10px]">
                       {lead.conversa.unread}
@@ -362,10 +513,42 @@ export function LeadDossier({
             </div>
           </div>
 
-          {/* NÍVEL 2: Pílulas de Contato, Responsável e Metadados Bem Distribuídos */}
+          {/* NÍVEL 2: Telefone, E-mail, Responsável e Tags */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 border-t border-border/70 bg-surface-elevated/60 px-5 py-2 sm:px-6 text-xs">
-            {/* Pílula Telefone */}
-            {telefoneContato ? (
+            {/* Pílula Telefone (com exibição real, cópia e edição inline) */}
+            {editandoTelefone ? (
+              <div className="inline-flex items-center gap-1 rounded-md border border-accent bg-surface px-2 py-0.5 text-xs">
+                <Phone size={12} className="text-accent shrink-0" />
+                <Input
+                  value={novoTelefoneInput}
+                  onChange={(e) => setNovoTelefoneInput(e.target.value)}
+                  placeholder={t("Telefone...")}
+                  className="h-6 w-32 px-1 text-xs"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleSalvarTelefone();
+                    if (e.key === "Escape") setEditandoTelefone(false);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleSalvarTelefone()}
+                  disabled={salvandoTelefone}
+                  className="text-emerald-600 hover:text-emerald-700 p-0.5"
+                  title={t("Salvar")}
+                >
+                  <Check size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditandoTelefone(false)}
+                  className="text-text-muted hover:text-text p-0.5"
+                  title={t("Cancelar")}
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ) : telefoneContato ? (
               <div className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1 font-medium text-text shadow-2xs">
                 <Phone size={12} className="text-text-muted" />
                 <span>{telefoneContato}</span>
@@ -380,15 +563,106 @@ export function LeadDossier({
                 >
                   <Copy size={11} />
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNovoTelefoneInput(telefoneContato);
+                    setEditandoTelefone(true);
+                  }}
+                  title={t("Editar telefone")}
+                  className="text-text-muted hover:text-accent transition ml-0.5"
+                >
+                  <PencilSimple size={11} />
+                </button>
               </div>
-            ) : null}
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setNovoTelefoneInput("");
+                  setEditandoTelefone(true);
+                }}
+                className="inline-flex items-center gap-1 rounded-md border border-dashed border-border-strong bg-surface/60 hover:bg-surface px-2 py-1 text-xs text-text-muted hover:text-text transition"
+                title={t("Adicionar telefone")}
+              >
+                <Phone size={11} />
+                <span>+ {t("Telefone")}</span>
+              </button>
+            )}
 
-            {/* Pílula E-mail se houver */}
-            {lead.contact_phone && (
+            {/* Pílula E-mail (com exibição do e-mail real, cópia e inserção/edição rápida) */}
+            {editandoEmail ? (
+              <div className="inline-flex items-center gap-1 rounded-md border border-accent bg-surface px-2 py-0.5 text-xs">
+                <EnvelopeSimple size={12} className="text-accent shrink-0" />
+                <Input
+                  value={novoEmailInput}
+                  onChange={(e) => setNovoEmailInput(e.target.value)}
+                  placeholder={t("email@exemplo.com")}
+                  className="h-6 w-40 px-1 text-xs"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleSalvarEmail();
+                    if (e.key === "Escape") setEditandoEmail(false);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleSalvarEmail()}
+                  disabled={salvandoEmail}
+                  className="text-emerald-600 hover:text-emerald-700 p-0.5"
+                  title={t("Salvar")}
+                >
+                  <Check size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditandoEmail(false)}
+                  className="text-text-muted hover:text-text p-0.5"
+                  title={t("Cancelar")}
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ) : emailContato ? (
               <div className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1 font-medium text-text shadow-2xs">
                 <EnvelopeSimple size={12} className="text-text-muted" />
-                <span className="truncate max-w-[200px]">{t("E-mail vinculado")}</span>
+                <span className="truncate max-w-[200px]" title={emailContato}>{emailContato}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(emailContato);
+                    toast.success(t("E-mail copiado"));
+                  }}
+                  title={t("Copiar e-mail")}
+                  className="text-text-muted hover:text-accent transition ml-0.5"
+                >
+                  <Copy size={11} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNovoEmailInput(emailContato);
+                    setEditandoEmail(true);
+                  }}
+                  title={t("Editar e-mail")}
+                  className="text-text-muted hover:text-accent transition ml-0.5"
+                >
+                  <PencilSimple size={11} />
+                </button>
               </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setNovoEmailInput("");
+                  setEditandoEmail(true);
+                }}
+                className="inline-flex items-center gap-1 rounded-md border border-dashed border-border-strong bg-surface/60 hover:bg-surface px-2 py-1 text-xs text-text-muted hover:text-text transition"
+                title={t("Adicionar e-mail")}
+              >
+                <EnvelopeSimple size={11} />
+                <span>+ {t("E-mail")}</span>
+              </button>
             )}
 
             {/* Pílula Responsável (com alteração direta) */}
@@ -409,6 +683,70 @@ export function LeadDossier({
                     </option>
                   ))}
               </select>
+            </div>
+
+            {/* Pílulas de Tags do Lead no Cabeçalho */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <TagIcon size={12} className="text-text-muted shrink-0" />
+              {tagsAtuais.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 rounded-md bg-accent/10 border border-accent/20 px-2 py-0.5 text-[11px] font-medium text-accent"
+                >
+                  <span>{tag}</span>
+                  <button
+                    type="button"
+                    onClick={() => void handleRemoverTag(tag)}
+                    disabled={salvandoTag}
+                    title={t("Remover tag")}
+                    className="text-accent/60 hover:text-accent transition ml-0.5"
+                  >
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+              {inserindoTag ? (
+                <div className="inline-flex items-center gap-1 rounded-md border border-accent bg-surface px-1.5 py-0.5 text-xs">
+                  <Input
+                    value={novaTagInput}
+                    onChange={(e) => setNovaTagInput(e.target.value)}
+                    placeholder={t("Nova tag...")}
+                    className="h-5 w-24 px-1 text-xs"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void handleAdicionarTag();
+                      if (e.key === "Escape") setInserindoTag(false);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleAdicionarTag()}
+                    disabled={salvandoTag}
+                    className="text-emerald-600 hover:text-emerald-700 p-0.5"
+                    title={t("Adicionar")}
+                  >
+                    <Check size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInserindoTag(false)}
+                    className="text-text-muted hover:text-text p-0.5"
+                    title={t("Cancelar")}
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setInserindoTag(true)}
+                  className="inline-flex items-center gap-1 rounded-md border border-dashed border-border-strong bg-surface/60 hover:bg-surface px-1.5 py-0.5 text-[11px] text-text-muted hover:text-text transition"
+                  title={t("Adicionar tag")}
+                >
+                  <Plus size={10} />
+                  <span>{t("Tag")}</span>
+                </button>
+              )}
             </div>
 
             {/* Data de Criação e Canal */}
@@ -439,34 +777,29 @@ export function LeadDossier({
           </div>
         )}
 
-        {/* Porta da conversa no topo (preservada para o teste e para o atendente) */}
-        <ConversaNoDossie
-          conversa={lead.conversa}
-          contactId={lead.contact_id}
-          phone={lead.contact_phone}
-        />
-
         {/* ======================================================== */}
-        {/* CORPO CENTRAL (2 COLUNAS: PRINCIPAL + LATERAL DE RESUMO) */}
+        {/* CORPO CENTRAL (2 COLUNAS: PRINCIPAL ROLÁVEL + LATERAL FIXA) */}
         {/* ======================================================== */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] divide-y lg:divide-y-0 lg:divide-x divide-border">
-          {/* COLUNA ESQUERDA: SEÇÕES E FORMULÁRIO */}
-          <div className="p-5 sm:p-6 min-w-0 space-y-4">
-            {/* ① Contato — mantido na ordem para satisfazer o contrato de navegação */}
-            <SecaoDoDossie
-              id="contato"
-              titulo={t("Contato")}
-              recolhida={fechadas.has("contato")}
-              aoAlternar={alternar}
-            >
-              <div data-peca="contato">
-                <ContatoDoNegocio
-                  contactId={lead.contact_id}
-                  pipelineId={pipelineId}
-                  leadId={lead.id}
-                />
-              </div>
-            </SecaoDoDossie>
+        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row min-h-0 divide-y lg:divide-y-0 lg:divide-x divide-border">
+          {/* COLUNA ESQUERDA: SEÇÕES E FORMULÁRIO (ROLA INDEPENDENTEMENTE) */}
+          <div className="flex-1 overflow-y-auto p-5 sm:p-6 min-w-0 space-y-4 pb-20 lg:pb-6">
+            {/* ① Contato — mantido no DOM para contrato de testes, oculto na tela */}
+            <div className="hidden">
+              <SecaoDoDossie
+                id="contato"
+                titulo={t("Contato")}
+                recolhida={fechadas.has("contato")}
+                aoAlternar={alternar}
+              >
+                <div data-peca="contato">
+                  <ContatoDoNegocio
+                    contactId={lead.contact_id}
+                    pipelineId={pipelineId}
+                    leadId={lead.id}
+                  />
+                </div>
+              </SecaoDoDossie>
+            </div>
 
             {/* ② Dados do negócio — campos do funil e requisitos */}
             <SecaoDoDossie
@@ -501,6 +834,15 @@ export function LeadDossier({
                 contactId={lead.contact_id}
                 podeEditar={podeEditarTarefas}
                 aberto={open}
+              />
+            </div>
+
+            {/* Porta da conversa mantida no DOM para testes, antes da timeline */}
+            <div className="hidden">
+              <ConversaNoDossie
+                conversa={lead.conversa}
+                contactId={lead.contact_id}
+                phone={lead.contact_phone}
               />
             </div>
 
@@ -541,8 +883,8 @@ export function LeadDossier({
             />
           </div>
 
-          {/* COLUNA DIREITA: ORÇAMENTO ESTIMADO + CRIAR PEDIDO + TAGS */}
-          <aside className="p-5 sm:p-6 bg-surface-elevated/35 flex flex-col gap-4">
+          {/* COLUNA DIREITA: ORÇAMENTO ESTIMADO + CRIAR PEDIDO (FIXA NO DESKTOP COM LARGURA AMPLA) */}
+          <aside className="w-full lg:w-[390px] xl:w-[410px] shrink-0 bg-surface-elevated/35 p-5 sm:p-6 flex flex-col gap-4 overflow-y-auto">
             {/* Card de Orçamento com super destaque e campo de desconto */}
             <ResumoOrcamentoProjeto
               customFields={customFieldsAtuais}
@@ -638,36 +980,40 @@ export function LeadDossier({
                 </div>
               )}
             </div>
-
-            {/* Tags rápidas do lead */}
-            {lead.tags && lead.tags.length > 0 && (
-              <div className="rounded-xl border border-border bg-surface p-3.5 shadow-2xs">
-                <div className="flex items-center gap-1.5 font-bold text-xs uppercase tracking-wider text-text-muted mb-2">
-                  <TagIcon size={12} />
-                  <span>{t("Tags")}</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {lead.tags.map((tg) => (
-                    <span
-                      key={tg}
-                      className="rounded-md bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent"
-                    >
-                      {tg}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </aside>
         </div>
 
         {/* ======================================================== */}
-        {/* RODAPÉ FIXO DO MODAL                                     */}
+        {/* BARRA FLUTUANTE INFERIOR PARA MOBILE (< lg)               */}
         {/* ======================================================== */}
-        <footer className="flex items-center justify-between border-t border-border bg-surface px-5 py-3 sm:px-6 shrink-0">
+        <div className="lg:hidden border-t border-border bg-surface/95 backdrop-blur-sm p-3 px-4 flex items-center justify-between shrink-0 shadow-lg z-20">
+          <div>
+            <span className="text-[10px] text-text-muted uppercase font-semibold block">{t("Total estimado")}</span>
+            <span className="text-sm font-bold text-accent font-mono">
+              {resumoOrcamentoAtual.total_geral_reais > 0
+                ? formatCents(resumoOrcamentoAtual.total_geral_cents, lead.currency ?? "BRL")
+                : t("A calcular")}
+            </span>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void handleCriarPedido()}
+            disabled={criandoPedido || !!pedidoGerado}
+            className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold text-xs shadow-sm h-9 px-3"
+          >
+            <ShoppingCart size={14} className="mr-1.5 shrink-0" />
+            <span>{pedidoGerado ? t("Pedido gerado") : t("Criar Pedido")}</span>
+          </Button>
+        </div>
+
+        {/* ======================================================== */}
+        {/* RODAPÉ FIXO DO MODAL (DESKTOP)                           */}
+        {/* ======================================================== */}
+        <footer className="hidden lg:flex items-center justify-between border-t border-border bg-surface px-5 py-3 sm:px-6 shrink-0">
           <div className="flex items-center gap-2 text-xs text-text-muted">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="hidden sm:inline">{t("Atualizado em tempo real")}</span>
+            <span>{t("Atualizado em tempo real")}</span>
           </div>
 
           <div className="flex items-center gap-2.5">

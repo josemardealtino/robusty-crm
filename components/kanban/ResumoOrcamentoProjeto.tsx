@@ -70,13 +70,16 @@ export function ResumoOrcamentoProjeto({
       className={`rounded-xl border border-accent/35 bg-surface text-xs text-text shadow-sm transition-all overflow-hidden ${className}`}
     >
       {/* Topo do Card de Orçamento */}
-      <div className="flex items-center justify-between border-b border-accent/20 bg-accent/10 px-4 py-2.5">
-        <div className="flex items-center gap-2 font-bold text-accent text-sm">
+      <div className="flex items-center justify-between gap-2 border-b border-accent/20 bg-accent/10 px-4 py-2.5">
+        <div className="flex items-center gap-2 font-bold text-accent text-sm shrink-0">
           <Calculator size={16} />
           <span>{t("Orçamento do Projeto")}</span>
         </div>
         {resumo.veiculo && (
-          <span className="rounded-md bg-accent/20 px-2.5 py-0.5 text-[11px] font-bold text-accent">
+          <span
+            className="rounded-md bg-accent/20 px-2.5 py-0.5 text-[11px] font-bold text-accent truncate max-w-[170px]"
+            title={resumo.veiculo.label}
+          >
             {resumo.veiculo.label}
           </span>
         )}
