@@ -602,27 +602,57 @@ async function main() {
   const modalidadeDefinidaStageId = pedidosStageMap.get('modalidade-definida')?.id;
   const pedidoConcluidoStageId = pedidosStageMap.get('pedido-concluido')?.id;
 
-  // Campos Customizados de Pedidos
+  // Campos Customizados de Pedidos (esteira completa de qualificação/comercial + operacionais ao final)
   const pedidosFieldsDef = [
+    ...leadsFieldsDef,
+    // Operacionais exclusivos de Pedidos (ao final da esteira)
     {
-      key: 'referencia_venda',
-      label: 'Referência da venda / ID da oportunidade',
-      type: 'text'
+      key: 'transportadora',
+      label: 'Transportadora',
+      type: 'text',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
     },
     {
-      key: 'modalidade_entrega',
-      label: 'Modalidade de entrega',
-      type: 'select',
-      options: [
-        { value: 'transportadora', label: 'Entrega' },
-        { value: 'instalacao_loja', label: 'Instalação na loja' }
-      ],
-      obrigatorio_em: modalidadeDefinidaStageId ? { etapas: [modalidadeDefinidaStageId] } : undefined
+      key: 'codigo_rastreamento',
+      label: 'Código/link de rastreamento',
+      type: 'text',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
     },
     {
-      key: 'produtos_servicos_pedido',
-      label: 'Produtos / serviços do pedido',
-      type: 'textarea'
+      key: 'data_coleta_despacho',
+      label: 'Data de coleta / despacho',
+      type: 'date',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
+    },
+    {
+      key: 'horario_coleta_despacho',
+      label: 'Horário da coleta / despacho',
+      type: 'time',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
+    },
+    {
+      key: 'previsao_entrega',
+      label: 'Previsão/data de entrega',
+      type: 'date',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'transportadora' }
+    },
+    {
+      key: 'data_instalacao',
+      label: 'Data da instalação',
+      type: 'date',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'instalacao_loja' }
+    },
+    {
+      key: 'horario_instalacao',
+      label: 'Horário da instalação',
+      type: 'time',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'instalacao_loja' }
+    },
+    {
+      key: 'local_responsavel_instalacao',
+      label: 'Local e responsável pela instalação',
+      type: 'text',
+      mostrar_quando: { campo: 'modalidade_pretendida', operador: 'igual', valor: 'instalacao_loja' }
     },
     {
       key: 'status_nota_fiscal',
@@ -642,81 +672,6 @@ async function main() {
       mostrar_quando: { campo: 'status_nota_fiscal', operador: 'igual', valor: 'emitida' }
     },
     {
-      key: 'observacoes_operacionais',
-      label: 'Observações operacionais',
-      type: 'textarea'
-    },
-    {
-      key: 'data_conclusao',
-      label: 'Data de conclusão',
-      type: 'date',
-      obrigatorio_em: { ao_ganhar: true }
-    },
-    // Condicionais de Transportadora:
-    {
-      key: 'cep_entrega',
-      label: 'CEP de entrega',
-      type: 'text',
-      padrao: '^\\d{5}-?\\d{3}$',
-      mensagem_padrao: 'Digite o CEP com 8 dígitos, ex: 03525-150',
-      mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'transportadora' }
-    },
-    {
-      key: 'endereco_entrega',
-      label: 'Endereço de entrega',
-      type: 'textarea',
-      mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'transportadora' }
-    },
-    {
-      key: 'transportadora',
-      label: 'Transportadora',
-      type: 'text',
-      mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'transportadora' }
-    },
-    {
-      key: 'data_coleta_despacho',
-      label: 'Data de coleta / despacho',
-      type: 'date',
-      mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'transportadora' }
-    },
-    {
-      key: 'horario_coleta_despacho',
-      label: 'Horário da coleta / despacho',
-      type: 'time',
-      mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'transportadora' }
-    },
-    {
-      key: 'previsao_entrega',
-      label: 'Previsão/data de entrega',
-      type: 'date',
-      mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'transportadora' }
-    },
-    {
-      key: 'codigo_rastreamento',
-      label: 'Código/link de rastreamento',
-      type: 'text',
-      mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'transportadora' }
-    },
-    // Condicionais de Instalação na loja:
-    {
-      key: 'data_instalacao',
-      label: 'Data da instalação',
-      type: 'date',
-      mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'instalacao_loja' }
-    },
-    {
-      key: 'horario_instalacao',
-      label: 'Horário da instalação',
-      type: 'time',
-      mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'instalacao_loja' }
-    },
-    {
-      key: 'local_responsavel_instalacao',
-      label: 'Local e responsável pela instalação',
-      type: 'text',
-      mostrar_quando: { campo: 'modalidade_entrega', operador: 'igual', valor: 'instalacao_loja' }
-    },
-    {
       key: 'confirmacao_entrega_instalacao',
       label: 'Confirmação de entrega/instalação',
       type: 'select',
@@ -726,6 +681,12 @@ async function main() {
         { value: 'comprovante_anexado', label: 'Comprovante anexado' },
         { value: 'instalacao_concluida_na_loja', label: 'Instalação concluída na loja' }
       ],
+      obrigatorio_em: { ao_ganhar: true }
+    },
+    {
+      key: 'data_conclusao',
+      label: 'Data de conclusão',
+      type: 'date',
       obrigatorio_em: { ao_ganhar: true }
     }
   ];

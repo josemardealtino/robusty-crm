@@ -13,6 +13,14 @@ export const CHAVES_INTERNAS_DO_SISTEMA = new Set([
   "meta_lead_submitted",
   "valor_desconto",
   "tipo_desconto",
+  "detalhes_da_necessidade",
+  // Chaves sinônimas e legadas que NÃO devem aparecer duplicadas no formulário:
+  "modalidade_entrega",
+  "cep_entrega",
+  "endereco_entrega",
+  "referencia_venda",
+  "produtos_servicos_pedido",
+  "observacoes_operacionais",
 ]);
 
 /**
@@ -386,12 +394,15 @@ function inferirTipoDoValor(valor: unknown): CustomFieldType {
  * exatamente os mesmos campos na mesma ordem estruturada.
  */
 export const ORDEM_CAMPOS_CICLO_ROBUSTY: string[] = [
+  // ─── 1. DOSSIÊ COMERCIAL / QUALIFICAÇÃO (ORDEM EXATA DO FUNIL DE LEADS) ───
   "veiculo",
   "ano_versao",
   "produto",
   "modelo_bagageiro",
   "tipo_de_acessorio",
   "acessorios_adicionais",
+  "tipo_precificacao",
+  "status_cotacao",
   "modalidade_pretendida",
   "cep",
   "endereco",
@@ -400,6 +411,11 @@ export const ORDEM_CAMPOS_CICLO_ROBUSTY: string[] = [
   "bairro",
   "cidade",
   "estado",
+  "valor_frete",
+  "forma_pagamento",
+  "status_pagamento",
+
+  // ─── 2. DOSSIÊ OPERACIONAL / PEDIDOS (NO FINAL, COM REGRAS REATIVAS) ──────
   "transportadora",
   "codigo_rastreamento",
   "data_coleta_despacho",
@@ -408,14 +424,10 @@ export const ORDEM_CAMPOS_CICLO_ROBUSTY: string[] = [
   "data_instalacao",
   "horario_instalacao",
   "local_responsavel_instalacao",
-  "confirmacao_entrega_instalacao",
   "status_nota_fiscal",
   "numero_nota_fiscal",
-  "tipo_precificacao",
-  "status_cotacao",
-  "valor_frete",
-  "forma_pagamento",
-  "status_pagamento",
+  "confirmacao_entrega_instalacao",
+  "data_conclusao",
 ];
 
 /**
@@ -424,14 +436,15 @@ export const ORDEM_CAMPOS_CICLO_ROBUSTY: string[] = [
  * conversão Lead → Pedido).
  *
  * Regras:
- * 1. Todo campo que JÁ possui valor preenchido tem sua restrição `mostrar_quando`
- *    removida na visualização do perfil, garantindo que nenhum dado preenchido
- *    desapareça ao mudar de etapa ou condição.
- * 2. Em registros que possuem campos conhecidos da Robusty (ou funis de Leads/Pedidos),
- *    disponibiliza toda a esteira do ciclo comercial e operacional para que
- *    qualquer pessoa (vendas ou logística) possa preencher ou atualizar dados
- *    conforme os recebe.
- * 3. Campos customizados arbitrários pré-existentes são preservados no formulário.
+ * 1. O dossiê do lead é ÚNICO entre comercial (Leads) e operacional (Pedidos):
+ *    No funil de Pedidos, a esteira comercial de qualificação é exibida com a
+ *    mesma ordem e regras do funil de Leads, e os campos exclusivos de Pedidos
+ *    aparecem ordenadamente ao final.
+ * 2. As regras de visibilidade dinâmica (`mostrar_quando`) são preservadas
+ *    intactas para que a alternância entre "Instalação na loja" e "Entrega"
+ *    oculte e exiba os campos dependentes reativamente na tela.
+ * 3. Chaves sinônimas e de controle interno (`cep_entrega`, `modalidade_entrega`, etc.)
+ *    são filtradas para evitar campos duplicados na interface.
  */
 export function mesclarCamposDoPerfil(
   definicoesDoFunil: readonly CustomFieldDef[],
@@ -451,108 +464,114 @@ export function mesclarCamposDoPerfil(
     valores.cep_entrega = valores.cep;
   }
 
-  const chavesDoFunil = new Set<string>();
-  const mapaResultado = new Map<string, CustomFieldDef>();
-
-  // 1. Processar definições passadas pelo funil
+  const mapaDefinicoesDoFunil = new Map<string, CustomFieldDef>();
   for (const def of definicoesDoFunil) {
-    chavesDoFunil.add(def.key);
-    if (valorEstaPreenchido(valores[def.key]) && def.mostrar_quando !== undefined) {
-      mapaResultado.set(def.key, { ...def, mostrar_quando: undefined });
-    } else {
-      mapaResultado.set(def.key, def);
+    if (!CHAVES_INTERNAS_DO_SISTEMA.has(def.key)) {
+      mapaDefinicoesDoFunil.set(def.key, def);
     }
   }
 
-  const CHAVES_SINONIMAS: Record<string, string> = {
-    modalidade_entrega: "modalidade_pretendida",
-    modalidade_pretendida: "modalidade_entrega",
-    cep_entrega: "cep",
-    cep: "cep_entrega",
-    observacoes_operacionais: "detalhes_da_necessidade",
-    detalhes_da_necessidade: "observacoes_operacionais",
-  };
-
-  // 2. Se for funil/lead com campos do negócio Robusty, garantir a esteira do ciclo de vida
   const ehNegocioRobusty =
-    chavesDoFunil.has("veiculo") ||
-    chavesDoFunil.has("modalidade_entrega") ||
-    chavesDoFunil.has("produtos_servicos_pedido") ||
+    mapaDefinicoesDoFunil.has("veiculo") ||
+    mapaDefinicoesDoFunil.has("transportadora") ||
+    mapaDefinicoesDoFunil.has("data_conclusao") ||
+    definicoesDoFunil.some(
+      (d) =>
+        d.key === "modalidade_entrega" ||
+        d.key === "produtos_servicos_pedido" ||
+        d.key === "referencia_venda",
+    ) ||
     valorEstaPreenchido(valores.veiculo) ||
     valorEstaPreenchido(valores.lead_origem_id) ||
     valorEstaPreenchido(valores.pedido_gerado_id) ||
     valorEstaPreenchido(valores.referencia_venda);
 
   if (ehNegocioRobusty) {
+    const resultado: CustomFieldDef[] = [];
+    const chavesAdicionadas = new Set<string>();
+
+    // 1. Injeta os campos canônicos na ordem exata da esteira Robusty
     for (const chave of ORDEM_CAMPOS_CICLO_ROBUSTY) {
       if (CHAVES_INTERNAS_DO_SISTEMA.has(chave)) continue;
-      const sinonimo = CHAVES_SINONIMAS[chave];
-      if (sinonimo && mapaResultado.has(sinonimo)) continue;
-
+      const defDoFunil = mapaDefinicoesDoFunil.get(chave);
       const defConhecida = CAMPOS_CONHECIDOS_DO_PERFIL[chave];
-      if (!defConhecida) continue;
 
-      const jaExiste = mapaResultado.get(chave);
-      if (jaExiste) {
-        if (valorEstaPreenchido(valores[chave])) {
-          mapaResultado.set(chave, { ...jaExiste, mostrar_quando: undefined });
-        }
-      } else {
-        // Se ainda não estava nas definições do funil atual (ex: campos comerciais no funil de Pedidos),
-        // inclui a definição conhecida para que o card seja completo e espelhado
-        if (valorEstaPreenchido(valores[chave])) {
-          mapaResultado.set(chave, { ...defConhecida, mostrar_quando: undefined });
-        } else {
-          mapaResultado.set(chave, defConhecida);
-        }
+      // A definição canônica é a base de integridade (rótulo, tipo e mostrar_quando),
+      // herdando obrigatoriedade da etapa se o funil a tiver configurado
+      const defFinal: CustomFieldDef | undefined = defConhecida
+        ? {
+            ...defConhecida,
+            ...(defDoFunil?.required !== undefined ? { required: defDoFunil.required } : {}),
+          }
+        : defDoFunil;
+
+      if (defFinal) {
+        resultado.push(defFinal);
+        chavesAdicionadas.add(chave);
       }
+    }
+
+    // 2. Inclui campos adicionais configurados no funil que não pertençam ao ciclo padrão
+    for (const [chave, def] of mapaDefinicoesDoFunil.entries()) {
+      if (!chavesAdicionadas.has(chave) && !CHAVES_INTERNAS_DO_SISTEMA.has(chave)) {
+        resultado.push(def);
+        chavesAdicionadas.add(chave);
+      }
+    }
+
+    // 3. Inclui quaisquer outros campos preenchidos que não estavam nas definições
+    for (const chave of Object.keys(valores)) {
+      if (chavesAdicionadas.has(chave) || CHAVES_INTERNAS_DO_SISTEMA.has(chave)) continue;
+      const valor = valores[chave];
+      if (!valorEstaPreenchido(valor)) continue;
+
+      const conhecido = CAMPOS_CONHECIDOS_DO_PERFIL[chave];
+      if (conhecido) {
+        resultado.push(conhecido);
+      } else {
+        const tipo = inferirTipoDoValor(valor);
+        resultado.push({
+          key: chave,
+          label: formatarRotuloDeChave(chave),
+          type: tipo,
+          ...(tipo === "searchable_select" ? { multiple: true, allow_new: true, options: [] } : {}),
+        });
+      }
+      chavesAdicionadas.add(chave);
+    }
+
+    return resultado;
+  }
+
+  // Se não for negócio Robusty, fluxo genérico mantendo todas as definições do funil
+  const resultadoGenerico: CustomFieldDef[] = [];
+  const chavesAdicionadas = new Set<string>();
+
+  for (const def of definicoesDoFunil) {
+    if (!CHAVES_INTERNAS_DO_SISTEMA.has(def.key)) {
+      resultadoGenerico.push(def);
+      chavesAdicionadas.add(def.key);
     }
   }
 
-  // 3. Incluir quaisquer outros campos presentes em valoresAtuais
   for (const chave of Object.keys(valores)) {
-    if (mapaResultado.has(chave) || CHAVES_INTERNAS_DO_SISTEMA.has(chave)) continue;
-    const sinonimo = CHAVES_SINONIMAS[chave];
-    if (sinonimo && mapaResultado.has(sinonimo)) continue;
-
+    if (chavesAdicionadas.has(chave) || CHAVES_INTERNAS_DO_SISTEMA.has(chave)) continue;
     const valor = valores[chave];
     if (!valorEstaPreenchido(valor)) continue;
 
     const conhecido = CAMPOS_CONHECIDOS_DO_PERFIL[chave];
     if (conhecido) {
-      mapaResultado.set(chave, { ...conhecido, mostrar_quando: undefined });
+      resultadoGenerico.push(conhecido);
     } else {
       const tipo = inferirTipoDoValor(valor);
-      mapaResultado.set(chave, {
+      resultadoGenerico.push({
         key: chave,
         label: formatarRotuloDeChave(chave),
         type: tipo,
-        ...(tipo === "searchable_select" ? { multiple: true, allow_new: true, options: [] } : {}),
       });
     }
+    chavesAdicionadas.add(chave);
   }
 
-  // Se for Robusty, ordenar os campos prioritariamente pela ORDEM_CAMPOS_CICLO_ROBUSTY
-  if (ehNegocioRobusty) {
-    const ordenados: CustomFieldDef[] = [];
-    const chavesOrdenadas = new Set<string>();
-
-    for (const chave of ORDEM_CAMPOS_CICLO_ROBUSTY) {
-      const item = mapaResultado.get(chave);
-      if (item) {
-        ordenados.push(item);
-        chavesOrdenadas.add(chave);
-      }
-    }
-
-    for (const [chave, item] of mapaResultado.entries()) {
-      if (!chavesOrdenadas.has(chave)) {
-        ordenados.push(item);
-      }
-    }
-
-    return ordenados;
-  }
-
-  return Array.from(mapaResultado.values());
+  return resultadoGenerico;
 }

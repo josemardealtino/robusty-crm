@@ -223,6 +223,18 @@ export async function sincronizarEspelhoLeadPedido(
     const cfMescladoNoPar: Record<string, unknown> = { ...cfPar };
     const cfMescladoNoAtual: Record<string, unknown> = { ...cfAtual };
 
+    // Harmonizar sinônimos no registro atual antes de propagar alterações
+    if (valorEstaPreenchido(cfAtual.modalidade_pretendida)) {
+      cfAtual.modalidade_entrega = cfAtual.modalidade_pretendida;
+    } else if (valorEstaPreenchido(cfAtual.modalidade_entrega)) {
+      cfAtual.modalidade_pretendida = cfAtual.modalidade_entrega;
+    }
+    if (valorEstaPreenchido(cfAtual.cep)) {
+      cfAtual.cep_entrega = cfAtual.cep;
+    } else if (valorEstaPreenchido(cfAtual.cep_entrega)) {
+      cfAtual.cep = cfAtual.cep_entrega;
+    }
+
     for (const k of chavesParaCopiar) {
       const vAtual = cfAtual[k];
       const vPar = cfPar[k];

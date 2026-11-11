@@ -898,81 +898,47 @@ export function LeadDossier({
             <div className="rounded-xl border border-border bg-surface p-3.5 shadow-2xs">
               {leadOrigemId ? (
                 <div className="space-y-2.5">
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2 text-text">
-                      <ShoppingCart size={15} className="shrink-0 text-accent" />
-                      <span>
-                        {t("Pedido originado do lead")}{" "}
-                        {lead.commercial_id && (
-                          <strong className="font-mono text-accent">
-                            {lead.commercial_id}
-                          </strong>
-                        )}
-                      </span>
-                    </div>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent">
-                      {t("Espelhado")}
+                  <div className="flex items-center gap-2 text-xs text-text">
+                    <ShoppingCart size={15} className="shrink-0 text-accent" />
+                    <span>
+                      {t("Pedido originado do lead")}{" "}
+                      {lead.commercial_id && (
+                        <strong className="font-mono text-accent">
+                          {lead.commercial_id}
+                        </strong>
+                      )}
                     </span>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void handleCriarPedido()}
-                      disabled={criandoPedido}
-                      className="flex-1 text-xs"
+                  {pipelineOrigemId && (
+                    <a
+                      href={`/app/pipelines/${pipelineOrigemId}?lead=${leadOrigemId}`}
+                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-semibold text-text hover:bg-surface-elevated shadow-2xs transition"
                     >
-                      {criandoPedido ? t("Sincronizando…") : t("Sincronizar dados")}
-                    </Button>
-                    {pipelineOrigemId && (
-                      <a
-                        href={`/app/pipelines/${pipelineOrigemId}?lead=${leadOrigemId}`}
-                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text hover:bg-surface-elevated shadow-2xs"
-                      >
-                        <span>{t("Ver lead")}</span>
-                        <ArrowRight size={12} />
-                      </a>
-                    )}
-                  </div>
+                      <span>{t("Ver lead")}</span>
+                      <ArrowRight size={13} />
+                    </a>
+                  )}
                 </div>
               ) : pedidoGerado ? (
                 <div className="space-y-2.5">
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2 text-text">
-                      <CheckCircle size={15} className="shrink-0 text-emerald-600" />
-                      <span>
-                        {t("Pedido gerado")}{" "}
-                        {pedidoGerado.commercialId && (
-                          <strong className="font-mono font-bold">
-                            {pedidoGerado.commercialId}
-                          </strong>
-                        )}
-                      </span>
-                    </div>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
-                      {t("Espelhado")}
+                  <div className="flex items-center gap-2 text-xs text-text">
+                    <CheckCircle size={15} className="shrink-0 text-emerald-600" />
+                    <span>
+                      {t("Pedido gerado")}{" "}
+                      {pedidoGerado.commercialId && (
+                        <strong className="font-mono font-bold">
+                          {pedidoGerado.commercialId}
+                        </strong>
+                      )}
                     </span>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void handleCriarPedido()}
-                      disabled={criandoPedido}
-                      className="flex-1 text-xs"
-                    >
-                      {criandoPedido ? t("Sincronizando…") : t("Sincronizar dados")}
-                    </Button>
-                    <a
-                      href={`/app/pipelines/${pedidoGerado.pipelineId}?lead=${pedidoGerado.orderId}`}
-                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 shadow-xs"
-                    >
-                      <span>{t("Abrir pedido")}</span>
-                      <ArrowRight size={13} />
-                    </a>
-                  </div>
+                  <a
+                    href={`/app/pipelines/${pedidoGerado.pipelineId}?lead=${pedidoGerado.orderId}`}
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-500 shadow-xs transition"
+                  >
+                    <span>{t("Abrir pedido")}</span>
+                    <ArrowRight size={13} />
+                  </a>
                 </div>
               ) : (
                 <div className="space-y-2">

@@ -163,7 +163,7 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
         setAvisoCep(t("CEP não encontrado. Preencha o endereço manualmente abaixo."));
         return;
       }
-      const next: Record<string, unknown> = { ...value, cep: cepFormatado };
+      const next: Record<string, unknown> = { ...value, cep: cepFormatado, cep_entrega: cepFormatado };
       if (dados.logradouro) next.endereco = dados.logradouro;
       if (dados.bairro) next.bairro = dados.bairro;
       if (dados.localidade) next.cidade = dados.localidade;
@@ -238,6 +238,25 @@ export function CustomFieldsEditor({ fields, value, onChange, mode, disabled, cl
           acessoriosValidos.includes(a),
         );
       }
+      onChange(next);
+      return;
+    }
+    if (key === "modalidade_pretendida" || key === "modalidade_entrega") {
+      const next: Record<string, unknown> = {
+        ...value,
+        modalidade_pretendida: v,
+        modalidade_entrega: v,
+      };
+      onChange(next);
+      return;
+    }
+    if (key === "cep" || key === "cep_entrega") {
+      const formatado = typeof v === "string" ? formatarCep(v) : v;
+      const next: Record<string, unknown> = {
+        ...value,
+        cep: formatado,
+        cep_entrega: formatado,
+      };
       onChange(next);
       return;
     }

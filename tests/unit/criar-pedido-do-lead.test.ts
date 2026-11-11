@@ -6,7 +6,7 @@ import { calcularOrcamentoProjeto } from "@/lib/robusty/catalogo";
 import { camposVisiveis } from "@/lib/schemas/mostrar-quando";
 
 describe("Persistência de campos no perfil do lead e conversão para Pedido", () => {
-  it("mantém visíveis campos já preenchidos mesmo quando possuem condição mostrar_quando inativa", () => {
+  it("preserva mostrar_quando reativo: oculta campos de entrega quando modalidade for instalacao_loja e exibe quando transportadora", () => {
     const definicoes = [
       {
         key: "modalidade_pretendida",
@@ -25,24 +25,43 @@ describe("Persistência de campos no perfil do lead e conversão para Pedido", (
         type: "currency" as const,
         mostrar_quando: { campo: "modalidade_pretendida", operador: "igual" as const, valor: "transportadora" },
       },
+      {
+        key: "data_instalacao",
+        label: "Data da instalação",
+        type: "date" as const,
+        mostrar_quando: { campo: "modalidade_pretendida", operador: "igual" as const, valor: "instalacao_loja" },
+      },
     ];
 
-    // CEP foi preenchido, mas modalidade mudou para "a_definir" e valor_frete continua vazio
-    const valores = {
-      modalidade_pretendida: "a_definir",
+    // 1. Quando modalidade for instalacao_loja, CEP e valor_frete ficam ocultos e data_instalacao fica visível
+    const valoresLoja = {
+      modalidade_pretendida: "instalacao_loja",
       cep: "03525-150",
     };
+    const mescladosLoja = mesclarCamposDoPerfil(definicoes, valoresLoja);
+    const visiveisLoja = camposVisiveis(mescladosLoja, valoresLoja);
+    expect(visiveisLoja.map((c) => c.key)).toEqual(["modalidade_pretendida", "data_instalacao"]);
 
-    const mesclados = mesclarCamposDoPerfil(definicoes, valores);
-    const visiveis = camposVisiveis(mesclados, valores);
-
-    expect(visiveis.map((c) => c.key)).toEqual(["modalidade_pretendida", "cep"]);
+    // 2. Quando modalidade for transportadora, CEP e valor_frete ficam visíveis e data_instalacao fica oculta
+    const valoresEntrega = {
+      modalidade_pretendida: "transportadora",
+      cep: "03525-150",
+    };
+    const mescladosEntrega = mesclarCamposDoPerfil(definicoes, valoresEntrega);
+    const visiveisEntrega = camposVisiveis(mescladosEntrega, valoresEntrega);
+    expect(visiveisEntrega.map((c) => c.key)).toEqual([
+      "modalidade_pretendida",
+      "cep",
+      "valor_frete",
+    ]);
   });
 
-  it("exibe no funil de Pedidos todos os campos comerciais herdados e preenchidos no funil de Leads", () => {
+  it("exibe no funil de Pedidos a mesma esteira comercial do funil de Leads e campos operacionais ao final sem duplicidades", () => {
     const definicoesFunilPedidos = [
-      { key: "referencia_venda", label: "Referência da venda", type: "text" as const },
       { key: "modalidade_entrega", label: "Modalidade de entrega", type: "select" as const },
+      { key: "cep_entrega", label: "CEP de entrega", type: "text" as const },
+      { key: "transportadora", label: "Transportadora", type: "text" as const },
+      { key: "data_conclusao", label: "Data de conclusão", type: "date" as const },
     ];
 
     const valoresNoPedido = {
@@ -61,16 +80,29 @@ describe("Persistência de campos no perfil do lead e conversão para Pedido", (
     const mesclados = mesclarCamposDoPerfil(definicoesFunilPedidos, valoresNoPedido);
     const chaves = mesclados.map((c) => c.key);
 
-    expect(chaves).toContain("referencia_venda");
-    expect(chaves).toContain("modalidade_entrega");
-    expect(chaves).toContain("produto");
+    // Campos comerciais do funil de Leads presentes
     expect(chaves).toContain("veiculo");
     expect(chaves).toContain("ano_versao");
+    expect(chaves).toContain("produto");
     expect(chaves).toContain("modelo_bagageiro");
     expect(chaves).toContain("acessorios_adicionais");
+    expect(chaves).toContain("modalidade_pretendida");
+    expect(chaves).toContain("cep");
     expect(chaves).toContain("forma_pagamento");
     expect(chaves).toContain("status_pagamento");
-    // Chave interna de vínculo não vira input solto
+
+    // Campos operacionais presentes
+    expect(chaves).toContain("transportadora");
+    expect(chaves).toContain("data_conclusao");
+
+    // Veículo (comercial) vem antes de transportadora e data_conclusao (operacional)
+    expect(chaves.indexOf("veiculo")).toBeLessThan(chaves.indexOf("transportadora"));
+    expect(chaves.indexOf("modalidade_pretendida")).toBeLessThan(chaves.indexOf("data_conclusao"));
+
+    // Chaves sinônimas e redundantes legadas NÃO poluem o formulário
+    expect(chaves).not.toContain("modalidade_entrega");
+    expect(chaves).not.toContain("cep_entrega");
+    expect(chaves).not.toContain("referencia_venda");
     expect(chaves).not.toContain("lead_origem_id");
   });
 
